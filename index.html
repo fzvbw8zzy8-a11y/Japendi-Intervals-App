@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#e7ddd0" />
+  <title>Aki · Intervals</title>
+
+  <!-- PWA / iOS add-to-home-screen -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Aki" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <main id="app">
+
+    <!-- ============ SETUP VIEW ============ -->
+    <section id="setup" class="view view--active" aria-label="Workout setup">
+      <header class="masthead">
+        <h1 class="wordmark">aki</h1>
+        <p class="tagline">intervals · sprint training</p>
+      </header>
+
+      <div class="presets" id="presets" aria-label="Presets"></div>
+
+      <div class="dials" id="dials">
+        <div class="dial" data-key="prepare">
+          <span class="dial__label">prepare</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease prepare">−</button>
+            <span class="dial__value" data-display="prepare">10s</span>
+            <button class="step" data-act="inc" aria-label="increase prepare">+</button>
+          </div>
+        </div>
+
+        <div class="dial dial--accent" data-key="sprint">
+          <span class="dial__label">sprint</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease sprint">−</button>
+            <span class="dial__value" data-display="sprint">30s</span>
+            <button class="step" data-act="inc" aria-label="increase sprint">+</button>
+          </div>
+        </div>
+
+        <div class="dial" data-key="recover">
+          <span class="dial__label">recover</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease recover">−</button>
+            <span class="dial__value" data-display="recover">60s</span>
+            <button class="step" data-act="inc" aria-label="increase recover">+</button>
+          </div>
+        </div>
+
+        <div class="dial" data-key="reps">
+          <span class="dial__label">reps</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease reps">−</button>
+            <span class="dial__value" data-display="reps">8</span>
+            <button class="step" data-act="inc" aria-label="increase reps">+</button>
+          </div>
+        </div>
+
+        <div class="dial" data-key="sets">
+          <span class="dial__label">sets</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease sets">−</button>
+            <span class="dial__value" data-display="sets">1</span>
+            <button class="step" data-act="inc" aria-label="increase sets">+</button>
+          </div>
+        </div>
+
+        <div class="dial" data-key="rest">
+          <span class="dial__label">set rest</span>
+          <div class="dial__control">
+            <button class="step" data-act="dec" aria-label="decrease set rest">−</button>
+            <span class="dial__value" data-display="rest">2:00</span>
+            <button class="step" data-act="inc" aria-label="increase set rest">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary" id="summary">
+        <span data-display="totalReps">8 efforts</span>
+        <span class="summary__dot">·</span>
+        <span data-display="totalTime">12:00 total</span>
+      </div>
+
+      <button class="begin" id="begin">begin</button>
+    </section>
+
+    <!-- ============ TIMER VIEW ============ -->
+    <section id="timer" class="view" aria-label="Workout timer">
+      <div class="timer__top">
+        <button class="ghost" id="quit" aria-label="End workout">end</button>
+        <span class="timer__counter" id="counter">rep 1 / 8</span>
+      </div>
+
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 240 240" aria-hidden="true">
+          <circle class="ring__track" cx="120" cy="120" r="108" />
+          <circle class="ring__fill" id="ringFill" cx="120" cy="120" r="108" />
+        </svg>
+        <div class="ring__center">
+          <span class="phase" id="phaseLabel">prepare</span>
+          <span class="clock" id="clock">0:10</span>
+          <span class="next" id="nextUp">next · sprint</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="ctrl" id="pause">pause</button>
+        <button class="ctrl ctrl--soft" id="skip" aria-label="Skip phase">skip ›</button>
+      </div>
+    </section>
+
+    <!-- ============ DONE VIEW ============ -->
+    <section id="done" class="view" aria-label="Workout complete">
+      <div class="done__inner">
+        <div class="done__mark">✦</div>
+        <h2 class="done__title">complete</h2>
+        <p class="done__stats" id="doneStats">8 efforts · 12:00</p>
+        <button class="begin" id="again">again</button>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
