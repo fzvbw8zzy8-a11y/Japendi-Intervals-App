@@ -23,7 +23,6 @@
     <section id="setup" class="view view--active" aria-label="Workout setup">
       <header class="masthead">
         <h1 class="wordmark">aki</h1>
-        <p class="tagline">intervals · sprint training</p>
       </header>
 
       <div class="presets" id="presets" aria-label="Presets"></div>
@@ -127,6 +126,20 @@
         <button class="begin" id="again">again</button>
       </div>
     </section>
+
+    <!-- ============ SAVE-PRESET SHEET ============ -->
+    <div id="sheet" class="sheet" aria-hidden="true">
+      <div class="sheet__card" role="dialog" aria-modal="true" aria-label="Save workout">
+        <span class="sheet__label">name this workout</span>
+        <input id="presetName" class="sheet__input" type="text" maxlength="18"
+               autocomplete="off" autocapitalize="none" spellcheck="false"
+               placeholder="e.g. tempo 200s" />
+        <div class="sheet__actions">
+          <button class="sheet__btn sheet__btn--ghost" id="sheetCancel">cancel</button>
+          <button class="sheet__btn" id="sheetSave">save</button>
+        </div>
+      </div>
+    </div>
 
   </main>
 

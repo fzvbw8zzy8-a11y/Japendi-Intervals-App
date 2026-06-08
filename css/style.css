@@ -83,15 +83,6 @@ body {
   text-indent: 0.22em;
   color: var(--mocha);
 }
-.tagline {
-  margin-top: 6px;
-  font-size: 11px;
-  letter-spacing: 0.34em;
-  text-indent: 0.34em;
-  text-transform: uppercase;
-  color: var(--mocha-faint);
-}
-
 .presets {
   display: flex;
   gap: 8px;
@@ -100,6 +91,9 @@ body {
   margin-bottom: 22px;
 }
 .preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: none;
   background: transparent;
   color: var(--mocha-soft);
@@ -109,7 +103,7 @@ body {
   padding: 8px 15px;
   border-radius: 999px;
   border: 1px solid transparent;
-  transition: all .35s var(--ease);
+  transition: background .35s var(--ease), color .35s var(--ease), border-color .35s var(--ease);
   cursor: pointer;
 }
 .preset--on {
@@ -118,6 +112,84 @@ body {
   border-color: var(--oat-deep);
   box-shadow: 0 1px 0 rgba(70,58,49,0.04);
 }
+/* the "+ save" chip */
+.preset--add {
+  color: var(--mocha-faint);
+  border: 1px dashed var(--dust);
+}
+.preset--add:active { background: var(--paper); }
+/* delete affordance on custom chips */
+.preset__del {
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.5;
+  margin: -2px -6px -2px 0;
+  padding: 2px 4px;
+  border-radius: 50%;
+  transition: opacity .25s var(--ease);
+}
+.preset__del:active { opacity: 1; }
+
+/* ---------- save-preset bottom sheet ---------- */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(54, 44, 37, 0);
+  pointer-events: none;
+  transition: background .35s var(--ease);
+}
+.sheet--open { background: rgba(54, 44, 37, 0.34); pointer-events: auto; }
+.sheet__card {
+  width: 100%;
+  max-width: 480px;
+  background: var(--paper);
+  border-radius: 28px 28px 0 0;
+  padding: 26px 24px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transform: translateY(115%);
+  transition: transform .42s var(--ease);
+  box-shadow: 0 -10px 34px rgba(70, 58, 49, 0.18);
+}
+.sheet--open .sheet__card { transform: none; }
+.sheet__label {
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--mocha-faint);
+}
+.sheet__input {
+  font-family: inherit;
+  font-size: 19px;
+  color: var(--mocha);
+  background: var(--surface);
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  outline: none;
+}
+.sheet__input::placeholder { color: var(--mocha-faint); }
+.sheet__actions { display: flex; gap: 12px; }
+.sheet__btn {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: 16px;
+  background: var(--mocha);
+  color: var(--paper);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform .14s var(--ease);
+}
+.sheet__btn:active { transform: scale(0.98); }
+.sheet__btn--ghost { background: var(--oat-deep); color: var(--mocha-soft); }
 
 .dials {
   display: grid;

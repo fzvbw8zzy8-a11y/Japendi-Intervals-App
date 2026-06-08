@@ -20,6 +20,7 @@
     rest:    { min: 0,  max: 900,  step: v => 30 },
   };
 
+  // built-in starting points (read-only)
   const PRESETS = {
     'sprint repeats': { prepare: 10, sprint: 30, recover: 90, reps: 8,  sets: 1, rest: 0 },
     'tabata':         { prepare: 10, sprint: 20, recover: 10, reps: 8,  sets: 1, rest: 0 },
@@ -28,6 +29,7 @@
   };
 
   let cfg = load();
+  let customPresets = loadPresets();   // [{ name, cfg }]
 
   // ---------- elements ----------
   const $ = sel => document.querySelector(sel);
@@ -44,6 +46,7 @@
     quit: $('#quit'), begin: $('#begin'), again: $('#again'),
     summary: $('#summary'), doneStats: $('#doneStats'),
     presets: $('#presets'), dials: $('#dials'),
+    sheet: $('#sheet'), presetName: $('#presetName'),
   };
 
   // ============================================================
@@ -84,26 +87,92 @@
 
   function buildPresets() {
     el.presets.innerHTML = '';
-    Object.keys(PRESETS).forEach(name => {
-      const b = document.createElement('button');
-      b.className = 'preset';
-      b.textContent = name;
-      b.dataset.preset = name;
-      b.addEventListener('click', () => {
-        cfg = { ...PRESETS[name] };
-        save();
-        renderSetup();
-        tick(440, 0.05);
-      });
-      el.presets.appendChild(b);
-    });
+    // built-ins, then your saved workouts, then the "+ save" chip
+    Object.keys(PRESETS).forEach(name => el.presets.appendChild(makeChip(name, PRESETS[name])));
+    customPresets.forEach((p, i) => el.presets.appendChild(makeChip(p.name, p.cfg, i)));
+
+    const add = document.createElement('button');
+    add.className = 'preset preset--add';
+    add.textContent = '+ save';
+    add.setAttribute('aria-label', 'Save current workout as a preset');
+    add.addEventListener('click', openSheet);
+    el.presets.appendChild(add);
+
+    markActivePreset();
   }
+
+  // a single preset chip; pass customIdx (number) to make it deletable
+  function makeChip(name, conf, customIdx) {
+    const b = document.createElement('button');
+    b.className = 'preset';
+    b._cfg = conf;
+
+    const label = document.createElement('span');
+    label.className = 'preset__name';
+    label.textContent = name;
+    b.appendChild(label);
+
+    b.addEventListener('click', () => {
+      cfg = { ...conf };
+      save();
+      renderSetup();
+      tick(440, 0.05);
+    });
+
+    if (typeof customIdx === 'number') {
+      const del = document.createElement('span');
+      del.className = 'preset__del';
+      del.textContent = '×';
+      del.setAttribute('role', 'button');
+      del.setAttribute('aria-label', 'delete ' + name);
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        deletePreset(customIdx);
+      });
+      b.appendChild(del);
+    }
+    return b;
+  }
+
   function markActivePreset() {
     document.querySelectorAll('.preset').forEach(b => {
-      const p = PRESETS[b.dataset.preset];
-      const match = p && Object.keys(DEFAULTS).every(k => p[k] === cfg[k]);
-      b.classList.toggle('preset--on', !!match);
+      if (!b._cfg) return;
+      const match = Object.keys(DEFAULTS).every(k => b._cfg[k] === cfg[k]);
+      b.classList.toggle('preset--on', match);
     });
+  }
+
+  // ---------- save / delete custom presets ----------
+  function openSheet() {
+    tick(520, 0.04);
+    el.presetName.value = '';
+    el.sheet.classList.add('sheet--open');
+    el.sheet.setAttribute('aria-hidden', 'false');
+    setTimeout(() => el.presetName.focus(), 60);
+  }
+  function closeSheet() {
+    el.sheet.classList.remove('sheet--open');
+    el.sheet.setAttribute('aria-hidden', 'true');
+    el.presetName.blur();
+  }
+  function commitSheet() {
+    const name = el.presetName.value.trim().toLowerCase();
+    if (!name) { el.presetName.focus(); return; }
+    const snap = {};
+    Object.keys(DEFAULTS).forEach(k => snap[k] = cfg[k]);
+    const existing = customPresets.findIndex(p => p.name === name);
+    if (existing >= 0) customPresets[existing].cfg = snap;   // overwrite same name
+    else customPresets.push({ name, cfg: snap });
+    savePresets();
+    closeSheet();
+    buildPresets();
+    tick(660, 0.06);
+  }
+  function deletePreset(index) {
+    customPresets.splice(index, 1);
+    savePresets();
+    buildPresets();
+    tick(380, 0.05);
   }
 
   el.dials.addEventListener('click', e => {
@@ -345,6 +414,17 @@
   }
   function save() { try { localStorage.setItem('aki.cfg', JSON.stringify(cfg)); } catch (_) {} }
 
+  function loadPresets() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('aki.presets'));
+      if (Array.isArray(raw)) return raw.filter(p => p && p.name && p.cfg);
+    } catch (_) {}
+    return [];
+  }
+  function savePresets() {
+    try { localStorage.setItem('aki.presets', JSON.stringify(customPresets)); } catch (_) {}
+  }
+
   // ============================================================
   //  WIRING
   // ============================================================
@@ -353,6 +433,12 @@
   el.pause.addEventListener('click', togglePause);
   el.skip.addEventListener('click', skipPhase);
   el.quit.addEventListener('click', quit);
+
+  // save-preset sheet
+  $('#sheetSave').addEventListener('click', commitSheet);
+  $('#sheetCancel').addEventListener('click', closeSheet);
+  el.sheet.addEventListener('click', e => { if (e.target === el.sheet) closeSheet(); });
+  el.presetName.addEventListener('keydown', e => { if (e.key === 'Enter') commitSheet(); });
 
   buildPresets();
   renderSetup();
