@@ -10,14 +10,15 @@
   // ---------- configuration model ----------
   const DEFAULTS = { prepare: 10, sprint: 30, recover: 60, reps: 8, sets: 1, rest: 120 };
 
-  // step size + bounds per field; stepping adapts to the current value
+  // step size + bounds per field; steps are fine (1s) at breathing-scale
+  // durations and grow coarser for longer sprint/recovery intervals
   const FIELD = {
-    prepare: { min: 0,  max: 60,   step: v => 5 },
-    sprint:  { min: 5,  max: 600,  step: v => (v < 60 ? 5 : 10) },
-    recover: { min: 0,  max: 900,  step: v => (v < 60 ? 5 : (v < 180 ? 15 : 30)) },
+    prepare: { min: 0,  max: 60,   step: v => (v < 10 ? 1 : 5) },
+    sprint:  { min: 1,  max: 600,  step: v => (v < 30 ? 1 : v < 60 ? 5 : 10) },
+    recover: { min: 0,  max: 900,  step: v => (v < 30 ? 1 : v < 60 ? 5 : v < 180 ? 15 : 30) },
     reps:    { min: 1,  max: 50,   step: v => 1 },
     sets:    { min: 1,  max: 20,   step: v => 1 },
-    rest:    { min: 0,  max: 900,  step: v => 30 },
+    rest:    { min: 0,  max: 900,  step: v => (v < 60 ? 5 : 30) },
   };
 
   // built-in starting points (read-only)
@@ -181,7 +182,10 @@
     const key = btn.closest('.dial').dataset.key;
     const f = FIELD[key];
     const dir = btn.dataset.act === 'inc' ? 1 : -1;
-    const delta = f.step(cfg[key]) * dir;
+    // when stepping down, size the step from just below the current value so
+    // crossing a tier boundary (e.g. 30→29) lands on the finer increment
+    const basis = dir > 0 ? cfg[key] : cfg[key] - 1;
+    const delta = f.step(basis) * dir;
     cfg[key] = Math.min(f.max, Math.max(f.min, cfg[key] + delta));
     save();
     renderSetup();
