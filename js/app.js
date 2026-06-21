@@ -45,6 +45,8 @@
     'tabata':         { kind: 'intervals', prepare: 10, sprint: 20, recover: 10, reps: 8,  sets: 1, rest: 0 },
     'hill 400s':      { kind: 'intervals', prepare: 15, sprint: 75, recover: 120, reps: 6, sets: 1, rest: 0 },
     'pyramid':        { kind: 'intervals', prepare: 10, sprint: 45, recover: 75, reps: 10, sets: 2, rest: 180 },
+    'forearms':       { kind: 'intervals', prepare: 0,  sprint: 20, recover: 20, reps: 6,  sets: 1, rest: 0 },
+    'vo2 max':        { kind: 'intervals', prepare: 5,  sprint: 30, recover: 10, reps: 10, sets: 1, rest: 0 },
     'box 4·4·4·4':    { kind: 'breathing', prepare: 4, inhale: 4, hold: 4, exhale: 4, holdout: 4, rounds: 8 },
     '4·7·8':          { kind: 'breathing', prepare: 4, inhale: 4, hold: 7, exhale: 8, holdout: 0, rounds: 6 },
   };
