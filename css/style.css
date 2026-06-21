@@ -409,6 +409,15 @@ body {
 .timer--recover { --accent: var(--sage); --accent-deep: var(--sage-deep); }
 .timer--rest    { --accent: var(--dust); --accent-deep: var(--dust-deep); }
 .timer--prepare { --accent: var(--mocha-faint); --accent-deep: var(--mocha-soft); }
+/* breathing phases */
+.timer--inhale  { --accent: var(--sage); --accent-deep: var(--sage-deep); }
+.timer--exhale  { --accent: var(--clay); --accent-deep: var(--clay-deep); }
+.timer--hold    { --accent: var(--dust); --accent-deep: var(--dust-deep); }
+.timer--holdout { --accent: var(--dust); --accent-deep: var(--dust-deep); }
+
+/* show only the dial grid matching the current workout kind */
+#setup:not(.is-breathing) #dialsBreath { display: none; }
+#setup.is-breathing #dials { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition-duration: .01ms !important; }

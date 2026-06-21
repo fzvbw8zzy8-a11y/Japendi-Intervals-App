@@ -8,7 +8,20 @@
   'use strict';
 
   // ---------- configuration model ----------
-  const DEFAULTS = { prepare: 10, sprint: 30, recover: 60, reps: 8, sets: 1, rest: 120 };
+  // kind 'intervals' uses sprint/recover/reps/sets/rest;
+  // kind 'breathing' uses inhale/hold/exhale/holdout/rounds
+  const DEFAULTS = {
+    kind: 'intervals',
+    prepare: 10, sprint: 30, recover: 60, reps: 8, sets: 1, rest: 120,
+    inhale: 4, hold: 4, exhale: 4, holdout: 4, rounds: 8,
+  };
+
+  // which fields belong to each workout kind (prepare is shared)
+  const KEYS = {
+    intervals: ['prepare', 'sprint', 'recover', 'reps', 'sets', 'rest'],
+    breathing: ['prepare', 'inhale', 'hold', 'exhale', 'holdout', 'rounds'],
+  };
+  const COUNT_FIELDS = new Set(['reps', 'sets', 'rounds']);
 
   // step size + bounds per field; steps are fine (1s) at breathing-scale
   // durations and grow coarser for longer sprint/recovery intervals
@@ -19,14 +32,21 @@
     reps:    { min: 1,  max: 50,   step: v => 1 },
     sets:    { min: 1,  max: 20,   step: v => 1 },
     rest:    { min: 0,  max: 900,  step: v => (v < 60 ? 5 : 30) },
+    inhale:  { min: 1,  max: 30,   step: v => 1 },
+    hold:    { min: 0,  max: 60,   step: v => 1 },
+    exhale:  { min: 1,  max: 30,   step: v => 1 },
+    holdout: { min: 0,  max: 60,   step: v => 1 },
+    rounds:  { min: 1,  max: 99,   step: v => 1 },
   };
 
   // built-in starting points (read-only)
   const PRESETS = {
-    'sprint repeats': { prepare: 10, sprint: 30, recover: 90, reps: 8,  sets: 1, rest: 0 },
-    'tabata':         { prepare: 10, sprint: 20, recover: 10, reps: 8,  sets: 1, rest: 0 },
-    'hill 400s':      { prepare: 15, sprint: 75, recover: 120, reps: 6, sets: 1, rest: 0 },
-    'pyramid':        { prepare: 10, sprint: 45, recover: 75, reps: 10, sets: 2, rest: 180 },
+    'sprint repeats': { kind: 'intervals', prepare: 10, sprint: 30, recover: 90, reps: 8,  sets: 1, rest: 0 },
+    'tabata':         { kind: 'intervals', prepare: 10, sprint: 20, recover: 10, reps: 8,  sets: 1, rest: 0 },
+    'hill 400s':      { kind: 'intervals', prepare: 15, sprint: 75, recover: 120, reps: 6, sets: 1, rest: 0 },
+    'pyramid':        { kind: 'intervals', prepare: 10, sprint: 45, recover: 75, reps: 10, sets: 2, rest: 180 },
+    'box 4·4·4·4':    { kind: 'breathing', prepare: 4, inhale: 4, hold: 4, exhale: 4, holdout: 4, rounds: 8 },
+    '4·7·8':          { kind: 'breathing', prepare: 4, inhale: 4, hold: 7, exhale: 8, holdout: 0, rounds: 6 },
   };
 
   let cfg = load();
@@ -46,7 +66,8 @@
     counter: $('#counter'), pause: $('#pause'), skip: $('#skip'),
     quit: $('#quit'), begin: $('#begin'), again: $('#again'),
     summary: $('#summary'), doneStats: $('#doneStats'),
-    presets: $('#presets'), dials: $('#dials'),
+    presets: $('#presets'), dials: $('#dials'), dialsBreath: $('#dialsBreath'),
+    setup: $('#setup'),
     sheet: $('#sheet'), presetName: $('#presetName'),
   };
 
@@ -66,15 +87,24 @@
   }
 
   function renderSetup() {
-    for (const key in DEFAULTS) {
-      const node = document.querySelector(`[data-display="${key}"]`);
-      if (!node) continue;
-      node.textContent = (key === 'reps' || key === 'sets') ? cfg[key] : fmt(cfg[key]);
+    const breathing = cfg.kind === 'breathing';
+    el.setup.classList.toggle('is-breathing', breathing);
+
+    KEYS[cfg.kind].forEach(key => {
+      const txt = COUNT_FIELDS.has(key) ? cfg[key] : fmt(cfg[key]);
+      document.querySelectorAll(`[data-display="${key}"]`).forEach(n => n.textContent = txt);
+    });
+
+    // summary line
+    if (breathing) {
+      const r = cfg.rounds;
+      document.querySelector('[data-display="totalReps"]').textContent =
+        `${r} round${r === 1 ? '' : 's'}`;
+    } else {
+      const efforts = cfg.reps * cfg.sets;
+      document.querySelector('[data-display="totalReps"]').textContent =
+        `${efforts} effort${efforts === 1 ? '' : 's'}`;
     }
-    // total
-    const totalEfforts = cfg.reps * cfg.sets;
-    document.querySelector('[data-display="totalReps"]').textContent =
-      `${totalEfforts} effort${totalEfforts === 1 ? '' : 's'}`;
     document.querySelector('[data-display="totalTime"]').textContent =
       `${clock(totalDuration())} total`;
     markActivePreset();
@@ -114,7 +144,7 @@
     b.appendChild(label);
 
     b.addEventListener('click', () => {
-      cfg = { ...conf };
+      cfg = { ...DEFAULTS, ...conf };   // merge so every field exists for either kind
       save();
       renderSetup();
       tick(440, 0.05);
@@ -137,8 +167,10 @@
 
   function markActivePreset() {
     document.querySelectorAll('.preset').forEach(b => {
-      if (!b._cfg) return;
-      const match = Object.keys(DEFAULTS).every(k => b._cfg[k] === cfg[k]);
+      const pc = b._cfg;
+      if (!pc) return;
+      const kind = pc.kind || 'intervals';
+      const match = kind === cfg.kind && KEYS[kind].every(k => pc[k] === cfg[k]);
       b.classList.toggle('preset--on', match);
     });
   }
@@ -159,8 +191,8 @@
   function commitSheet() {
     const name = el.presetName.value.trim().toLowerCase();
     if (!name) { el.presetName.focus(); return; }
-    const snap = {};
-    Object.keys(DEFAULTS).forEach(k => snap[k] = cfg[k]);
+    const snap = { kind: cfg.kind };
+    KEYS[cfg.kind].forEach(k => snap[k] = cfg[k]);
     const existing = customPresets.findIndex(p => p.name === name);
     if (existing >= 0) customPresets[existing].cfg = snap;   // overwrite same name
     else customPresets.push({ name, cfg: snap });
@@ -176,7 +208,7 @@
     tick(380, 0.05);
   }
 
-  el.dials.addEventListener('click', e => {
+  function onDialClick(e) {
     const btn = e.target.closest('.step');
     if (!btn) return;
     const key = btn.closest('.dial').dataset.key;
@@ -190,12 +222,39 @@
     save();
     renderSetup();
     tick(dir > 0 ? 520 : 400, 0.04);
-  });
+  }
+  el.dials.addEventListener('click', onDialClick);
+  el.dialsBreath.addEventListener('click', onDialClick);
 
   // ============================================================
   //  PHASE QUEUE
   // ============================================================
   function buildQueue() {
+    return cfg.kind === 'breathing' ? buildBreathQueue() : buildIntervalQueue();
+  }
+
+  // breathing: inhale → hold → exhale → hold-out, per round.
+  // the ring fills on the inhale and empties on the exhale for a visual guide.
+  function buildBreathQueue() {
+    const q = [];
+    if (cfg.prepare > 0) q.push({ type: 'prepare', label: 'prepare', dur: cfg.prepare, ring: 'drain' });
+    const breath = [
+      { type: 'inhale',  label: 'inhale',  key: 'inhale',  ring: 'fill' },
+      { type: 'hold',    label: 'hold',    key: 'hold',    ring: 'hold-full' },
+      { type: 'exhale',  label: 'exhale',  key: 'exhale',  ring: 'drain' },
+      { type: 'holdout', label: 'hold',    key: 'holdout', ring: 'hold-empty' },
+    ];
+    for (let r = 0; r < cfg.rounds; r++) {
+      breath.forEach(b => {
+        if (cfg[b.key] > 0) {
+          q.push({ type: b.type, label: b.label, dur: cfg[b.key], ring: b.ring, round: r + 1 });
+        }
+      });
+    }
+    return q;
+  }
+
+  function buildIntervalQueue() {
     const q = [];
     if (cfg.prepare > 0) q.push({ type: 'prepare', label: 'prepare', dur: cfg.prepare });
     for (let s = 0; s < cfg.sets; s++) {
@@ -223,10 +282,12 @@
   let queue = [], idx = 0, totalEfforts = 0;
   let phaseEnd = 0, remaining = 0, paused = true, rafId = null;
   let lastWholeSecond = -1, cuedCountdown = -1;
+  let breathingMode = false;
 
   function startWorkout() {
     queue = buildQueue();
     idx = 0;
+    breathingMode = cfg.kind === 'breathing';
     totalEfforts = cfg.reps * cfg.sets;
     show('timer');
     requestWakeLock();
@@ -244,17 +305,23 @@
     cuedCountdown = -1;
 
     // theme
-    timerView.classList.remove('timer--sprint', 'timer--recover', 'timer--rest', 'timer--prepare', 'is-paused');
+    timerView.classList.remove(
+      'timer--sprint', 'timer--recover', 'timer--rest', 'timer--prepare',
+      'timer--inhale', 'timer--hold', 'timer--exhale', 'timer--holdout', 'is-paused');
     timerView.classList.add('timer--' + ph.type);
 
     el.phase.textContent = ph.label;
     el.pause.textContent = 'pause';
 
     // counter + next-up
-    const effortNum = ph.rep && ph.set ? (ph.set - 1) * cfg.reps + ph.rep : null;
-    el.counter.textContent = ph.type === 'rest'
-      ? `set ${ph.set} done`
-      : (effortNum ? `rep ${effortNum} / ${totalEfforts}` : 'get ready');
+    if (breathingMode) {
+      el.counter.textContent = ph.round ? `round ${ph.round} / ${cfg.rounds}` : 'get ready';
+    } else {
+      const effortNum = ph.rep && ph.set ? (ph.set - 1) * cfg.reps + ph.rep : null;
+      el.counter.textContent = ph.type === 'rest'
+        ? `set ${ph.set} done`
+        : (effortNum ? `rep ${effortNum} / ${totalEfforts}` : 'get ready');
+    }
     const nxt = queue[idx + 1];
     el.next.textContent = nxt ? `next · ${nxt.label}` : 'next · finish';
 
@@ -275,9 +342,9 @@
         return enterPhase(idx + 1);
       }
 
-      // countdown cues at 3,2,1
+      // countdown cues at 3,2,1 — suppressed in breathing for a calm experience
       const whole = Math.ceil(remaining);
-      if (whole <= 3 && whole !== cuedCountdown) {
+      if (!breathingMode && whole <= 3 && whole !== cuedCountdown) {
         cuedCountdown = whole;
         tick(660, 0.06);
         haptic(20);
@@ -297,7 +364,14 @@
     const rem = forceRemain != null ? forceRemain : remaining;
     el.clock.textContent = clock(rem);
     const frac = Math.min(1, Math.max(0, rem / ph.dur));
-    ringFill.style.strokeDashoffset = RING_LEN * (1 - frac);
+    let offset;
+    switch (ph.ring) {
+      case 'fill':       offset = RING_LEN * frac; break;       // empty → full (inhale)
+      case 'hold-full':  offset = 0; break;                     // stays full (hold)
+      case 'hold-empty': offset = RING_LEN; break;              // stays empty (hold out)
+      default:           offset = RING_LEN * (1 - frac);        // full → empty (drain)
+    }
+    ringFill.style.strokeDashoffset = offset;
   }
 
   function togglePause() {
@@ -324,7 +398,9 @@
     cancelAnimationFrame(rafId);
     releaseWakeLock();
     cueFinish();
-    el.doneStats.textContent = `${totalEfforts} effort${totalEfforts === 1 ? '' : 's'} · ${clock(totalDuration())}`;
+    el.doneStats.textContent = breathingMode
+      ? `${cfg.rounds} round${cfg.rounds === 1 ? '' : 's'} · ${clock(totalDuration())}`
+      : `${totalEfforts} effort${totalEfforts === 1 ? '' : 's'} · ${clock(totalDuration())}`;
     show('done');
   }
 
@@ -369,11 +445,36 @@
   function haptic(ms) {
     if (navigator.vibrate) navigator.vibrate(ms);
   }
+  // a soft tone that glides between two pitches — used for calm breath swells
+  function swell(f0, f1, dur = 0.9, gain = 0.12) {
+    const a = audio();
+    if (!a) return;
+    const osc = a.createOscillator();
+    const g = a.createGain();
+    osc.type = 'sine';
+    const t = a.currentTime;
+    osc.frequency.setValueAtTime(f0, t);
+    osc.frequency.linearRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + dur * 0.35);
+    g.gain.linearRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g).connect(a.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
   function cueStart(type) {
-    if (type === 'sprint')      { chord([523, 784], 0.45); haptic([0, 40, 60, 80]); }
-    else if (type === 'recover'){ tick(392, 0.5, 0.16); haptic(40); }
-    else if (type === 'rest')   { tick(330, 0.7, 0.15); haptic([0, 50, 80, 50]); }
-    else                        { tick(440, 0.3, 0.13); haptic(30); }
+    switch (type) {
+      // sprint / interval cues — clear and energetic
+      case 'sprint':  chord([523, 784], 0.45); haptic([0, 40, 60, 80]); break;
+      case 'recover': tick(392, 0.5, 0.16);    haptic(40); break;
+      case 'rest':    tick(330, 0.7, 0.15);    haptic([0, 50, 80, 50]); break;
+      // breathing cues — soft, gliding, gentle haptics
+      case 'inhale':  swell(330, 466, 0.9, 0.12); haptic(25); break;
+      case 'exhale':  swell(466, 294, 1.0, 0.12); haptic(25); break;
+      case 'hold':
+      case 'holdout': tick(392, 0.22, 0.06);      haptic(12); break;
+      default:        tick(440, 0.3, 0.13);       haptic(30); // prepare
+    }
   }
   function cueFinish() {
     chord([523, 659, 784, 1047], 0.6, 0.17);
