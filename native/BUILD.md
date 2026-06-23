@@ -133,14 +133,33 @@ Drag these from `native/ios/AkiWidget/` into the **AkiWidget** target:
 
 ### 4. Add it to your Home Screen
 
-Long-press the Home Screen → **＋** → **Aki** → **Aki — Habits** (small shows 2
-habits, medium shows 4). Tap a ring to mark today done; the count habits fill
-toward their target, then wrap to undo. Changes sync back to the app when you
-next open it.
+Long-press the Home Screen → **＋** → **Aki** → **Aki — Habits**:
 
-> Interactive widgets are **Home-Screen, iOS 17+**. Lock-Screen accessory
-> widgets are extremely space-limited; a single-habit Lock-Screen toggle is a
-> possible later addition.
+- **small** — 2 habits
+- **medium** — 4 habits
+- **large** — the **focus panel**: up to 6 habits as a full tappable list with a
+  "3 / 5 today" header
+
+Tap a ring/row to mark today done; count habits fill toward their target, then
+wrap to undo. Changes sync back to the app when you next open it.
+
+### 5. Make it your Focus Home Screen
+
+To let the panel *replace* your app grid and discourage doomscrolling:
+
+1. Long-press the Home Screen → **Edit** → **＋** → add the **large** Aki Habits
+   widget to a page with **no app icons** (delete icons off that page — they
+   stay in the App Library).
+2. Long-press the Home Screen → tap the page dots → **un-tick** your other,
+   busier pages so this panel is the page you land on. Re-order so it's first.
+3. Move Instagram/YouTube etc. **off** the first pages (into the App Library or
+   a far page), or hide their pages entirely.
+4. Optional: a **Focus** mode (Settings → Focus) can show only this page and
+   silence distracting apps during your focus blocks.
+
+> Interactive widgets are **Home-Screen, iOS 17+**. `systemLarge` is the biggest
+> single widget on iPhone — pair it with a `medium` if you want to fill a page
+> edge-to-edge.
 
 ---
 
