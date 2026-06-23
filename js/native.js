@@ -36,4 +36,18 @@
   if (App.getLaunchUrl) {
     App.getLaunchUrl().then(function (res) { route(res && res.url); }).catch(function () {});
   }
+
+  // ---- habit sync with the App Group store (so the widget & app agree) ----
+  var Store = Cap.Plugins.AkiStore;
+  function pullHabits() {
+    if (Store && Store.get) {
+      Store.get().then(function (r) {
+        if (r && r.value && window.aki && window.aki.ingestHabits) window.aki.ingestHabits(r.value);
+      }).catch(function () {});
+    }
+  }
+  // on launch, and whenever the app returns to the foreground (widget may have
+  // toggled a habit while we were backgrounded)
+  pullHabits();
+  App.addListener('appStateChange', function (state) { if (state && state.isActive) pullHabits(); });
 })();

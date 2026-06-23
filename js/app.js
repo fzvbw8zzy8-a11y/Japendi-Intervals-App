@@ -589,6 +589,20 @@
   window.aki = {
     start: slug => launchPreset(slug, true),
     open:  slug => launchPreset(slug, false),
+    // pull habit data written by the widget (App Group) back into the app
+    ingestHabits(json) {
+      try {
+        const d = typeof json === 'string' ? JSON.parse(json) : json;
+        if (!d) return;
+        if (Array.isArray(d.habits)) habits = d.habits;
+        if (d.log && typeof d.log === 'object') habitLog = d.log;
+        try {
+          localStorage.setItem('aki.habits', JSON.stringify(habits));
+          localStorage.setItem('aki.habitlog', JSON.stringify(habitLog));
+        } catch (_) {}
+        if (views.habits.classList.contains('view--active')) renderHabits();
+      } catch (_) {}
+    },
   };
 
   // ============================================================

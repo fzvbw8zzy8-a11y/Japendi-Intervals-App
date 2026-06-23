@@ -91,6 +91,59 @@ Tap it → Aki opens and the workout begins.
 
 ---
 
+## Habit-tracker widget (App Group + interactive widget)
+
+The habit widget lets you tap a habit ring to complete it **without opening the
+app**. The app and the widget share data through an **App Group**; a tiny
+Capacitor plugin (`AkiStore`) lets the web app read/write that shared store.
+
+### 1. Create the App Group
+
+For **both** the App target and the AkiWidget target:
+**Signing & Capabilities → ＋ Capability → App Groups → ＋** and add:
+
+```
+group.app.aki.intervals
+```
+
+(If you change the id, update it in `AkiStorePlugin.swift` and `HabitStore.swift`.)
+
+### 2. Add the AkiStore plugin (App target)
+
+Drag both files from `native/ios/AkiStorePlugin/` into the **App** target
+(check **Copy items if needed**, target **App**):
+
+- `AkiStorePlugin.swift`
+- `AkiStorePlugin.m`  → when prompted to create a bridging header, choose
+  **Create** (Capacitor's macros need the Obj-C registration file).
+
+No JS changes are needed — `js/app.js` and `js/native.js` already call
+`Capacitor.Plugins.AkiStore` and no-op when it is absent.
+
+### 3. Add the habits widget files (AkiWidget target)
+
+Drag these from `native/ios/AkiWidget/` into the **AkiWidget** target:
+
+- `HabitStore.swift`
+- `ToggleHabitIntent.swift`
+- `AkiHabitsWidget.swift`
+
+(`AkiWidgetBundle.swift` already lists both `AkiWidget()` and
+`AkiHabitsWidget()`.) Re-run from Xcode.
+
+### 4. Add it to your Home Screen
+
+Long-press the Home Screen → **＋** → **Aki** → **Aki — Habits** (small shows 2
+habits, medium shows 4). Tap a ring to mark today done; the count habits fill
+toward their target, then wrap to undo. Changes sync back to the app when you
+next open it.
+
+> Interactive widgets are **Home-Screen, iOS 17+**. Lock-Screen accessory
+> widgets are extremely space-limited; a single-habit Lock-Screen toggle is a
+> possible later addition.
+
+---
+
 ## Updating the app later
 
 ```bash

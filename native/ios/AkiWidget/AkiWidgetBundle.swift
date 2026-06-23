@@ -7,6 +7,7 @@ import SwiftUI
 @main
 struct AkiWidgetBundle: WidgetBundle {
     var body: some Widget {
-        AkiWidget()
+        AkiWidget()         // workout launcher (Lock + Home Screen)
+        AkiHabitsWidget()   // interactive habit tracker (Home Screen)
     }
 }

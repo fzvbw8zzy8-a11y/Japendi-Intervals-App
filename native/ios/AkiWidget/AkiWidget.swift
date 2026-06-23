@@ -26,6 +26,8 @@ extension Color {
     static let akiMocha = Color(hex: 0x463A31)
     static let akiSoft  = Color(hex: 0x6F5F52)
     static let akiClay  = Color(hex: 0xA9694E)
+    static let akiSage  = Color(hex: 0x8A9A86)
+    static let akiDust  = Color(hex: 0xB7A08C)
 }
 
 // MARK: - Presets (mirrors the web app's built-in presets & slugs)
