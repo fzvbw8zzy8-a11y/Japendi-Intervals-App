@@ -558,19 +558,33 @@
     const startSlug = params.get('start');
     const slug = startSlug || params.get('open');
     if (!slug) return;
+    if (launchPreset(slug, !!startSlug)) {
+      // drop the query so a later manual refresh doesn't re-trigger the launch
+      try { history.replaceState({}, '', location.pathname); } catch (_) {}
+    }
+  }
+
+  // load a preset by slug and optionally begin it. returns false if unknown.
+  function launchPreset(slug, begin) {
     const pc = findPresetBySlug(slug);
-    if (!pc) return;
+    if (!pc) return false;
     cfg = { ...DEFAULTS, ...pc };
     save();
+    show('setup');
     renderSetup();
-    // drop the query so a later manual refresh doesn't re-trigger the launch
-    try { history.replaceState({}, '', location.pathname); } catch (_) {}
-    if (startSlug) {
+    if (begin) {
       primeAudioOnFirstTouch();
       audio();
       startWorkout();
     }
+    return true;
   }
+
+  // exposed for the native widget bridge (Capacitor appUrlOpen → js/native.js)
+  window.aki = {
+    start: slug => launchPreset(slug, true),
+    open:  slug => launchPreset(slug, false),
+  };
 
   // ============================================================
   //  WIRING

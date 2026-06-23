@@ -1,10 +1,11 @@
 /* Aki · Intervals — offline cache */
-const CACHE = 'aki-v6';
+const CACHE = 'aki-v7';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
   './js/app.js',
+  './js/native.js',
   './manifest.webmanifest',
   './icons/icon.svg',
   './icons/icon-180.png',

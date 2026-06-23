@@ -1,0 +1,10 @@
+{
+  "appId": "app.aki.intervals",
+  "appName": "Aki",
+  "webDir": "www",
+  "ios": {
+    "scheme": "Aki",
+    "contentInset": "always",
+    "backgroundColor": "#e7ddd0"
+  }
+}

@@ -1,0 +1,17 @@
+<!--
+  Paste this inside the <dict> of the MAIN app target's Info.plist
+  (ios/App/App/Info.plist), so widget taps on aki://start/<slug> open the app.
+  In Xcode you can instead use the App target → Info → URL Types → "+",
+  with Identifier "app.aki.intervals" and URL Schemes "aki".
+-->
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>app.aki.intervals</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>aki</string>
+        </array>
+    </dict>
+</array>

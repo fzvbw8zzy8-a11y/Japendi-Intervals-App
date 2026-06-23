@@ -1,0 +1,12 @@
+# dependencies
+node_modules/
+
+# Capacitor build output (generated at repo root — not committed)
+/www/
+/ios/
+/android/
+.capacitor/
+
+# misc
+.DS_Store
+*.log
