@@ -533,6 +533,46 @@
   }
 
   // ============================================================
+  //  DEEP LINKS — launch a specific workout from a URL.
+  //  Used by iOS Shortcuts / Lock-Screen widgets and (later) the
+  //  native widget, e.g.  …/?start=vo2-max  or  …/?open=box-4-4-4-4
+  //    start=<slug> → load that preset and begin immediately
+  //    open=<slug>  → load that preset, stay on setup (one tap to begin)
+  // ============================================================
+  function slugify(s) {
+    return s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  function findPresetBySlug(slug) {
+    for (const name in PRESETS) if (slugify(name) === slug) return PRESETS[name];
+    const c = customPresets.find(p => slugify(p.name) === slug);
+    return c ? c.cfg : null;
+  }
+  // resume audio on the first touch, since a deep-link auto-begin has no
+  // in-page gesture and iOS keeps the audio context suspended until one
+  function primeAudioOnFirstTouch() {
+    const resume = () => { audio(); };
+    document.addEventListener('pointerdown', resume, { once: true });
+  }
+  function handleDeepLink() {
+    const params = new URLSearchParams(location.search);
+    const startSlug = params.get('start');
+    const slug = startSlug || params.get('open');
+    if (!slug) return;
+    const pc = findPresetBySlug(slug);
+    if (!pc) return;
+    cfg = { ...DEFAULTS, ...pc };
+    save();
+    renderSetup();
+    // drop the query so a later manual refresh doesn't re-trigger the launch
+    try { history.replaceState({}, '', location.pathname); } catch (_) {}
+    if (startSlug) {
+      primeAudioOnFirstTouch();
+      audio();
+      startWorkout();
+    }
+  }
+
+  // ============================================================
   //  WIRING
   // ============================================================
   el.begin.addEventListener('click', () => { audio(); startWorkout(); });
@@ -549,6 +589,7 @@
 
   buildPresets();
   renderSetup();
+  handleDeepLink();
 
   // service worker for offline use
   if ('serviceWorker' in navigator) {
