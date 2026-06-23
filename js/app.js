@@ -76,6 +76,10 @@
     addHabit: $('#addHabit'), habitSheet: $('#habitSheet'),
     habitNameInput: $('#habitNameInput'), habitTargetVal: $('#habitTargetVal'),
     habitSwatches: $('#habitSwatches'),
+    // tasks
+    taskList: $('#taskList'), tasksHead: $('#tasksHead'), addTask: $('#addTask'),
+    taskSheet: $('#taskSheet'), taskTextInput: $('#taskTextInput'),
+    taskKind: $('#taskKind'), taskHint: $('#taskHint'),
   };
 
   // ============================================================
@@ -589,18 +593,22 @@
   window.aki = {
     start: slug => launchPreset(slug, true),
     open:  slug => launchPreset(slug, false),
-    // pull habit data written by the widget (App Group) back into the app
+    // pull habit/task data written by the widget (App Group) back into the app
     ingestHabits(json) {
       try {
         const d = typeof json === 'string' ? JSON.parse(json) : json;
         if (!d) return;
         if (Array.isArray(d.habits)) habits = d.habits;
         if (d.log && typeof d.log === 'object') habitLog = d.log;
+        if (Array.isArray(d.tasks)) tasks = d.tasks;
+        if (d.tasklog && typeof d.tasklog === 'object') taskLog = d.tasklog;
         try {
           localStorage.setItem('aki.habits', JSON.stringify(habits));
           localStorage.setItem('aki.habitlog', JSON.stringify(habitLog));
+          localStorage.setItem('aki.tasks', JSON.stringify(tasks));
+          localStorage.setItem('aki.tasklog', JSON.stringify(taskLog));
         } catch (_) {}
-        if (views.habits.classList.contains('view--active')) renderHabits();
+        if (views.habits.classList.contains('view--active')) renderTracker();
       } catch (_) {}
     },
   };
@@ -616,9 +624,12 @@
 
   let habits = loadHabits();
   let habitLog = loadHabitLog();
+  let tasks = loadTasks();
+  let taskLog = loadTaskLog();
   let habitEditing = false;
   let draftAccent = 'clay';
   let draftTarget = 1;
+  let draftTaskKind = 'once';
 
   function dayKey(d = new Date()) {
     const z = n => String(n).padStart(2, '0');
@@ -634,15 +645,25 @@
     try { const r = JSON.parse(localStorage.getItem('aki.habitlog')); if (r && typeof r === 'object') return r; } catch (_) {}
     return {};
   }
-  function persistHabits() {
+  function loadTasks() {
+    try { const r = JSON.parse(localStorage.getItem('aki.tasks')); if (Array.isArray(r)) return r; } catch (_) {}
+    return [];
+  }
+  function loadTaskLog() {
+    try { const r = JSON.parse(localStorage.getItem('aki.tasklog')); if (r && typeof r === 'object') return r; } catch (_) {}
+    return {};
+  }
+  function persistAll() {
     try {
       localStorage.setItem('aki.habits', JSON.stringify(habits));
       localStorage.setItem('aki.habitlog', JSON.stringify(habitLog));
+      localStorage.setItem('aki.tasks', JSON.stringify(tasks));
+      localStorage.setItem('aki.tasklog', JSON.stringify(taskLog));
     } catch (_) {}
     // mirror to the native App Group store so the widget sees the same data
     try {
       const S = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AkiStore;
-      if (S && S.set) S.set({ value: JSON.stringify({ habits, log: habitLog }) });
+      if (S && S.set) S.set({ value: JSON.stringify({ habits, log: habitLog, tasks, tasklog: taskLog }) });
     } catch (_) {}
   }
 
@@ -656,7 +677,7 @@
     const cur = habitLog[key][h.id] || 0;
     const next = cur >= target ? 0 : cur + 1;     // wrap to 0 to undo once complete
     if (next === 0) delete habitLog[key][h.id]; else habitLog[key][h.id] = next;
-    persistHabits();
+    persistAll();
     renderHabits();
     if (next >= target && next !== 0) { tick(660, 0.06); haptic(20); }
     else { tick(next === 0 ? 380 : 520, 0.04); }
@@ -738,7 +759,7 @@
 
   function deleteHabit(id) {
     habits = habits.filter(h => h.id !== id);
-    persistHabits();
+    persistAll();
     renderHabits();
     tick(380, 0.05);
   }
@@ -770,17 +791,118 @@
       id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       name, target: draftTarget, accent: draftAccent, created: dayKey(),
     });
-    persistHabits();
+    persistAll();
     closeHabitSheet();
     renderHabits();
     tick(660, 0.06);
   }
 
+  // ============================================================
+  //  TASKS  (one-off 'once' persist until done; 'daily' reset each day)
+  // ============================================================
+  function taskDone(t) {
+    if (t.kind === 'daily') { const d = taskLog[dayKey()]; return !!(d && d[t.id]); }
+    return !!t.done;
+  }
+  function toggleTask(t) {
+    if (t.kind === 'daily') {
+      const k = dayKey();
+      if (!taskLog[k]) taskLog[k] = {};
+      if (taskLog[k][t.id]) delete taskLog[k][t.id]; else taskLog[k][t.id] = 1;
+    } else {
+      t.done = !t.done;
+    }
+    persistAll();
+    renderTasks();
+    const done = taskDone(t);
+    tick(done ? 660 : 380, done ? 0.06 : 0.04);
+    haptic(15);
+  }
+  // completed one-off tasks clear on the next app open / day rollover
+  function purgeDoneOnceTasks() {
+    const before = tasks.length;
+    tasks = tasks.filter(t => !(t.kind === 'once' && t.done));
+    if (tasks.length !== before) persistAll();
+  }
+
+  function renderTasks() {
+    const list = el.taskList;
+    list.classList.toggle('is-editing', habitEditing);
+    list.innerHTML = '';
+    el.tasksHead.style.display = tasks.length ? '' : 'none';
+    tasks.forEach(t => {
+      const done = taskDone(t);
+      const card = document.createElement('div');
+      card.className = 'task' + (done ? ' is-done' : '');
+
+      const tap = document.createElement('button');
+      tap.className = 'task__tap';
+      tap.setAttribute('aria-label', (done ? 'uncomplete ' : 'complete ') + t.text);
+      tap.innerHTML =
+        `<span class="task__box">${done ? '✓' : ''}</span>
+         <span class="task__text">${escapeHtml(t.text)}</span>
+         <span class="task__kind">${t.kind}</span>`;
+      tap.addEventListener('click', () => toggleTask(t));
+      card.appendChild(tap);
+
+      const del = document.createElement('button');
+      del.className = 'task__del';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'delete ' + t.text);
+      del.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
+      card.appendChild(del);
+
+      list.appendChild(card);
+    });
+  }
+
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    persistAll();
+    renderTasks();
+    tick(380, 0.05);
+  }
+
+  // ---------- new-task sheet ----------
+  function updateTaskKind() {
+    el.taskKind.querySelectorAll('.seg__opt').forEach(o =>
+      o.classList.toggle('seg__opt--on', o.dataset.kind === draftTaskKind));
+    el.taskHint.textContent = draftTaskKind === 'daily'
+      ? 'resets every morning' : 'stays until you complete it';
+  }
+  function openTaskSheet() {
+    tick(520, 0.04);
+    el.taskTextInput.value = '';
+    draftTaskKind = 'once';
+    updateTaskKind();
+    el.taskSheet.classList.add('sheet--open');
+    el.taskSheet.setAttribute('aria-hidden', 'false');
+    setTimeout(() => el.taskTextInput.focus(), 60);
+  }
+  function closeTaskSheet() {
+    el.taskSheet.classList.remove('sheet--open');
+    el.taskSheet.setAttribute('aria-hidden', 'true');
+    el.taskTextInput.blur();
+  }
+  function commitTask() {
+    const text = el.taskTextInput.value.trim();
+    if (!text) { el.taskTextInput.focus(); return; }
+    tasks.push({
+      id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      text, kind: draftTaskKind, done: false,
+    });
+    persistAll();
+    closeTaskSheet();
+    renderTasks();
+    tick(660, 0.06);
+  }
+
   // ---------- tab navigation ----------
+  function renderTracker() { renderHabits(); renderTasks(); }
   function switchTab(name) {
     show(name);
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('tab--on', t.dataset.tab === name));
-    if (name === 'habits') renderHabits();
+    if (name === 'habits') renderTracker();
   }
 
   // ============================================================
@@ -806,7 +928,7 @@
   el.habitEdit.addEventListener('click', () => {
     habitEditing = !habitEditing;
     el.habitEdit.textContent = habitEditing ? 'done' : 'edit';
-    renderHabits();
+    renderTracker();
   });
   $('#habitSave').addEventListener('click', commitHabit);
   $('#habitCancel').addEventListener('click', closeHabitSheet);
@@ -826,6 +948,21 @@
     tick(480, 0.03);
   });
 
+  // tasks
+  el.addTask.addEventListener('click', openTaskSheet);
+  $('#taskSave').addEventListener('click', commitTask);
+  $('#taskCancel').addEventListener('click', closeTaskSheet);
+  el.taskSheet.addEventListener('click', e => { if (e.target === el.taskSheet) closeTaskSheet(); });
+  el.taskTextInput.addEventListener('keydown', e => { if (e.key === 'Enter') commitTask(); });
+  el.taskKind.addEventListener('click', e => {
+    const o = e.target.closest('.seg__opt');
+    if (!o) return;
+    draftTaskKind = o.dataset.kind;
+    updateTaskKind();
+    tick(480, 0.03);
+  });
+
+  purgeDoneOnceTasks();
   buildPresets();
   renderSetup();
   handleDeepLink();

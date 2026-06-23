@@ -202,9 +202,16 @@
         <button class="ghost" id="habitEdit">edit</button>
       </div>
 
-      <div class="habits" id="habitList"></div>
+      <div class="trackscroll">
+        <div class="habits" id="habitList"></div>
+        <div class="tasks__head" id="tasksHead">tasks</div>
+        <div class="tasks" id="taskList"></div>
+      </div>
 
-      <button class="begin begin--soft" id="addHabit">+ new habit</button>
+      <div class="addrow">
+        <button class="begin begin--soft" id="addHabit">+ habit</button>
+        <button class="begin begin--soft" id="addTask">+ task</button>
+      </div>
     </section>
 
     <!-- ============ SAVE-PRESET SHEET ============ -->
@@ -245,6 +252,25 @@
         <div class="sheet__actions">
           <button class="sheet__btn sheet__btn--ghost" id="habitCancel">cancel</button>
           <button class="sheet__btn" id="habitSave">save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ NEW-TASK SHEET ============ -->
+    <div id="taskSheet" class="sheet" aria-hidden="true">
+      <div class="sheet__card" role="dialog" aria-modal="true" aria-label="New task">
+        <span class="sheet__label">new task</span>
+        <input id="taskTextInput" class="sheet__input" type="text" maxlength="40"
+               autocomplete="off" autocapitalize="sentences" spellcheck="false"
+               placeholder="e.g. call dentist" />
+        <div class="seg" id="taskKind" role="group" aria-label="Task type">
+          <button class="seg__opt seg__opt--on" data-kind="once">once</button>
+          <button class="seg__opt" data-kind="daily">daily</button>
+        </div>
+        <span class="sheet__hint" id="taskHint">stays until you complete it</span>
+        <div class="sheet__actions">
+          <button class="sheet__btn sheet__btn--ghost" id="taskCancel">cancel</button>
+          <button class="sheet__btn" id="taskSave">save</button>
         </div>
       </div>
     </div>
