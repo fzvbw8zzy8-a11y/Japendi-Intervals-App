@@ -703,6 +703,36 @@
     return out;
   }
 
+  // a single round control button used in edit mode (move up / down / delete)
+  function ctrlBtn(glyph, label, disabled, onClick, extraClass) {
+    const b = document.createElement('button');
+    b.className = 'ctrlbtn' + (extraClass ? ' ' + extraClass : '');
+    b.textContent = glyph;
+    b.setAttribute('aria-label', label);
+    if (disabled) b.disabled = true;
+    b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
+    return b;
+  }
+  // edit-mode cluster: ↑ ↓ ×  for an item at `idx` within a list of `total`
+  function editControls(idx, total, name, onUp, onDown, onDelete) {
+    const wrap = document.createElement('div');
+    wrap.className = 'row__ctrls';
+    wrap.appendChild(ctrlBtn('↑', 'move ' + name + ' up', idx === 0, onUp));
+    wrap.appendChild(ctrlBtn('↓', 'move ' + name + ' down', idx === total - 1, onDown));
+    wrap.appendChild(ctrlBtn('×', 'delete ' + name, false, onDelete, 'ctrlbtn--del'));
+    return wrap;
+  }
+  function moveInArray(arr, id, dir) {
+    const i = arr.findIndex(x => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= arr.length) return false;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    return true;
+  }
+  function moveHabit(id, dir) {
+    if (moveInArray(habits, id, dir)) { persistAll(); renderHabits(); tick(480, 0.03); haptic(10); }
+  }
+
   function renderHabits() {
     el.habitDay.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
     const list = el.habitList;
@@ -716,7 +746,7 @@
       return;
     }
     const R = 18, LEN = 2 * Math.PI * R;
-    habits.forEach(h => {
+    habits.forEach((h, idx) => {
       const target = h.target || 1;
       const count = habitCount(h.id);
       const off = LEN * (1 - Math.min(1, count / target));
@@ -745,13 +775,8 @@
         </span>`;
       tap.addEventListener('click', () => tapHabit(h));
       card.appendChild(tap);
-
-      const del = document.createElement('button');
-      del.className = 'habit__del';
-      del.textContent = '×';
-      del.setAttribute('aria-label', 'delete ' + h.name);
-      del.addEventListener('click', e => { e.stopPropagation(); deleteHabit(h.id); });
-      card.appendChild(del);
+      card.appendChild(editControls(idx, habits.length, h.name,
+        () => moveHabit(h.id, -1), () => moveHabit(h.id, 1), () => deleteHabit(h.id)));
 
       list.appendChild(card);
     });
@@ -825,12 +850,16 @@
     if (tasks.length !== before) persistAll();
   }
 
+  function moveTask(id, dir) {
+    if (moveInArray(tasks, id, dir)) { persistAll(); renderTasks(); tick(480, 0.03); haptic(10); }
+  }
+
   function renderTasks() {
     const list = el.taskList;
     list.classList.toggle('is-editing', habitEditing);
     list.innerHTML = '';
     el.tasksHead.style.display = tasks.length ? '' : 'none';
-    tasks.forEach(t => {
+    tasks.forEach((t, idx) => {
       const done = taskDone(t);
       const card = document.createElement('div');
       card.className = 'task' + (done ? ' is-done' : '');
@@ -844,13 +873,8 @@
          <span class="task__kind">${t.kind}</span>`;
       tap.addEventListener('click', () => toggleTask(t));
       card.appendChild(tap);
-
-      const del = document.createElement('button');
-      del.className = 'task__del';
-      del.textContent = '×';
-      del.setAttribute('aria-label', 'delete ' + t.text);
-      del.addEventListener('click', e => { e.stopPropagation(); deleteTask(t.id); });
-      card.appendChild(del);
+      card.appendChild(editControls(idx, tasks.length, t.text,
+        () => moveTask(t.id, -1), () => moveTask(t.id, 1), () => deleteTask(t.id)));
 
       list.appendChild(card);
     });

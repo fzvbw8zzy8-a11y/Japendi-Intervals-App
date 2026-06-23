@@ -279,16 +279,22 @@ body {
 .habit__trail { display: flex; gap: 4px; }
 .habit__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--oat-deep); }
 .habit__dot.on { background: var(--habit-accent, var(--clay)); }
-.habit__del {
-  display: none;
-  width: 28px; height: 28px; border-radius: 50%; border: none;
-  background: var(--oat-deep); color: var(--mocha-soft);
-  font-size: 16px; line-height: 1; cursor: pointer;
-  flex: 0 0 auto;
-}
-.habit__del:active { transform: scale(0.88); }
-.habits.is-editing .habit__del { display: grid; place-items: center; }
 .habits.is-editing .habit__tap { opacity: 0.55; pointer-events: none; }
+
+/* edit-mode controls: move up / down / delete (shared by habits & tasks) */
+.row__ctrls { display: none; align-items: center; gap: 6px; flex: 0 0 auto; }
+.habits.is-editing .row__ctrls,
+.tasks.is-editing .row__ctrls { display: flex; }
+.ctrlbtn {
+  width: 30px; height: 30px; border-radius: 50%; border: none;
+  background: var(--oat-deep); color: var(--mocha-soft);
+  font-size: 15px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center;
+  transition: transform .12s var(--ease), opacity .2s var(--ease);
+}
+.ctrlbtn:active { transform: scale(0.86); }
+.ctrlbtn:disabled { opacity: 0.28; pointer-events: none; }
+.ctrlbtn--del { color: var(--clay-deep); }
 
 .begin--soft {
   background: var(--surface); color: var(--mocha);
@@ -333,15 +339,6 @@ body {
   font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
   color: var(--mocha-faint); margin-left: 8px; flex: 0 0 auto;
 }
-.task__del {
-  display: none;
-  width: 26px; height: 26px; border-radius: 50%; border: none;
-  background: var(--oat-deep); color: var(--mocha-soft);
-  font-size: 15px; cursor: pointer; flex: 0 0 auto; margin-left: 8px;
-}
-.task__del:active { transform: scale(0.88); }
-.habits.is-editing ~ .tasks .task__del,
-.tasks.is-editing .task__del { display: grid; place-items: center; }
 .tasks.is-editing .task__tap { opacity: 0.55; pointer-events: none; }
 
 /* segmented control (task type) */
