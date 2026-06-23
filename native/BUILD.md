@@ -126,6 +126,7 @@ Drag these from `native/ios/AkiWidget/` into the **AkiWidget** target:
 
 - `HabitStore.swift`
 - `ToggleHabitIntent.swift`
+- `ToggleTaskIntent.swift`
 - `AkiHabitsWidget.swift`
 
 (`AkiWidgetBundle.swift` already lists both `AkiWidget()` and

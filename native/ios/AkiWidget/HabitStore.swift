@@ -16,6 +16,13 @@ struct HabitItem: Identifiable {
     let accent: String
 }
 
+struct TaskItem: Identifiable {
+    let id: String
+    let text: String
+    let kind: String   // "once" | "daily"
+    let done: Bool
+}
+
 enum HabitStore {
     static let suiteName = "group.app.aki.intervals"
     static let storeKey  = "aki.data"
@@ -73,6 +80,44 @@ enum HabitStore {
 
         log[day] = d
         data["log"] = log
+        write(data)
+    }
+
+    // MARK: Tasks
+
+    /// active tasks: 'daily' always shown (with today's done state); completed
+    /// 'once' tasks are cleared, matching the app
+    static func tasks() -> [TaskItem] {
+        let arr = root()["tasks"] as? [[String: Any]] ?? []
+        let tlog = (root()["tasklog"] as? [String: Any])?[todayKey()] as? [String: Any] ?? [:]
+        return arr.compactMap { t in
+            guard let id = t["id"] as? String, let text = t["text"] as? String else { return nil }
+            let kind = (t["kind"] as? String) ?? "once"
+            if kind == "daily" {
+                return TaskItem(id: id, text: text, kind: kind, done: ((tlog[id] as? Int) ?? 0) > 0)
+            }
+            if (t["done"] as? Bool) == true { return nil }   // completed one-off → cleared
+            return TaskItem(id: id, text: text, kind: kind, done: false)
+        }
+    }
+
+    static func toggleTask(_ id: String) {
+        var data = root()
+        var arr = data["tasks"] as? [[String: Any]] ?? []
+        guard let idx = arr.firstIndex(where: { ($0["id"] as? String) == id }) else { return }
+        let kind = (arr[idx]["kind"] as? String) ?? "once"
+
+        if kind == "daily" {
+            let day = todayKey()
+            var tlog = data["tasklog"] as? [String: Any] ?? [:]
+            var d = tlog[day] as? [String: Any] ?? [:]
+            if ((d[id] as? Int) ?? 0) > 0 { d.removeValue(forKey: id) } else { d[id] = 1 }
+            tlog[day] = d
+            data["tasklog"] = tlog
+        } else {
+            arr[idx]["done"] = !((arr[idx]["done"] as? Bool) ?? false)
+            data["tasks"] = arr
+        }
         write(data)
     }
 }

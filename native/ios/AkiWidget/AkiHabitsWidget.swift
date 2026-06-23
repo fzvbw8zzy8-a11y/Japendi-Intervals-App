@@ -25,6 +25,7 @@ struct HabitsEntry: TimelineEntry {
     let date: Date
     let habits: [HabitItem]
     let counts: [String: Int]
+    let tasks: [TaskItem]
 }
 
 struct HabitsProvider: TimelineProvider {
@@ -40,16 +41,17 @@ struct HabitsProvider: TimelineProvider {
         let hs = HabitStore.habits()
         var counts: [String: Int] = [:]
         for h in hs { counts[h.id] = HabitStore.count(h.id) }
-        return HabitsEntry(date: .now, habits: hs, counts: counts)
+        return HabitsEntry(date: .now, habits: hs, counts: counts, tasks: HabitStore.tasks())
     }
 
     private var sample: HabitsEntry {
         HabitsEntry(date: .now,
                     habits: [HabitItem(id: "a", name: "Meditate", target: 1, accent: "sage"),
                              HabitItem(id: "b", name: "Water", target: 3, accent: "dust"),
-                             HabitItem(id: "c", name: "Read", target: 1, accent: "clay"),
-                             HabitItem(id: "d", name: "Stretch", target: 1, accent: "mocha")],
-                    counts: ["a": 1, "b": 2, "c": 0, "d": 1])
+                             HabitItem(id: "c", name: "Read", target: 1, accent: "clay")],
+                    counts: ["a": 1, "b": 2, "c": 0],
+                    tasks: [TaskItem(id: "t1", text: "Call dentist", kind: "once", done: false),
+                            TaskItem(id: "t2", text: "Tidy desk", kind: "daily", done: true)])
     }
 }
 
@@ -123,6 +125,36 @@ struct HabitRow: View {
     }
 }
 
+struct TaskRow: View {
+    let task: TaskItem
+    var body: some View {
+        Button(intent: ToggleTaskIntent(taskId: task.id)) {
+            HStack(spacing: 13) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(task.done ? Color.akiSage : Color.akiDust, lineWidth: 2)
+                        .frame(width: 22, height: 22)
+                    if task.done {
+                        RoundedRectangle(cornerRadius: 6).fill(Color.akiSage).frame(width: 22, height: 22)
+                        Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.akiOat)
+                    }
+                }
+                .frame(width: 30, height: 30)
+                Text(task.text)
+                    .font(.system(size: 15))
+                    .strikethrough(task.done)
+                    .foregroundStyle(task.done ? Color.akiFaint : Color.akiMocha)
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+                Text(task.kind.uppercased())
+                    .font(.system(size: 9)).tracking(1).foregroundStyle(Color.akiFaint)
+            }
+            .padding(.vertical, 5)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Entry view
 
 struct AkiHabitsEntryView: View {
@@ -141,9 +173,13 @@ struct AkiHabitsEntryView: View {
         entry.habits.filter { (entry.counts[$0.id] ?? 0) >= $0.target }.count
     }
 
+    // large panel: habits first, then tasks fill the remaining rows (7 total)
+    private var panelHabits: [HabitItem] { Array(entry.habits.prefix(7)) }
+    private var panelTasks: [TaskItem] { Array(entry.tasks.prefix(max(0, 7 - panelHabits.count))) }
+
     var body: some View {
         Group {
-            if entry.habits.isEmpty {
+            if entry.habits.isEmpty && entry.tasks.isEmpty {
                 emptyState
             } else if family == .systemLarge {
                 largePanel
@@ -166,24 +202,43 @@ struct AkiHabitsEntryView: View {
         }
     }
 
+    private var headerSummary: String {
+        let total = panelHabits.count + panelTasks.count
+        let done = doneCount + panelTasks.filter { $0.done }.count
+        return "\(done) / \(total) today"
+    }
+
     private var largePanel: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text("aki").font(.system(size: 16, weight: .light)).tracking(5).foregroundStyle(Color.akiMocha)
                 Spacer()
-                Text("\(doneCount) / \(entry.habits.count) today")
+                Text(headerSummary)
                     .font(.system(size: 11)).tracking(0.5).foregroundStyle(Color.akiSoft)
             }
             .padding(.bottom, 2)
 
-            ForEach(Array(entry.habits.prefix(maxCount))) { h in
+            ForEach(Array(panelHabits.enumerated()), id: \.element.id) { idx, h in
                 HabitRow(habit: h, count: entry.counts[h.id] ?? 0)
-                if h.id != entry.habits.prefix(maxCount).last?.id {
-                    Rectangle().fill(Color.akiMocha.opacity(0.07)).frame(height: 1)
+                if idx < panelHabits.count - 1 || !panelTasks.isEmpty { divider }
+            }
+
+            if !panelTasks.isEmpty {
+                Text("tasks")
+                    .font(.system(size: 9)).tracking(2).textCase(.uppercase)
+                    .foregroundStyle(Color.akiFaint)
+                    .padding(.top, 2)
+                ForEach(Array(panelTasks.enumerated()), id: \.element.id) { idx, t in
+                    TaskRow(task: t)
+                    if idx < panelTasks.count - 1 { divider }
                 }
             }
             Spacer(minLength: 0)
         }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(Color.akiMocha.opacity(0.07)).frame(height: 1)
     }
 }
 
