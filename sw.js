@@ -1,5 +1,5 @@
 /* Aki · Intervals — offline cache */
-const CACHE = 'aki-v7';
+const CACHE = 'aki-v8';
 const ASSETS = [
   './',
   './index.html',

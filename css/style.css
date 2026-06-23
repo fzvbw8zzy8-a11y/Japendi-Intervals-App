@@ -191,6 +191,109 @@ body {
 .sheet__btn:active { transform: scale(0.98); }
 .sheet__btn--ghost { background: var(--oat-deep); color: var(--mocha-soft); }
 
+/* new-habit sheet extras */
+.sheet__row { display: flex; align-items: center; justify-content: space-between; }
+.sheet__sublabel { font-size: 12.5px; letter-spacing: 0.04em; color: var(--mocha-soft); }
+.sheet__stepper { gap: 16px; }
+.swatches { display: flex; gap: 14px; justify-content: center; }
+.swatch {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid transparent; cursor: pointer;
+  transition: transform .15s var(--ease), border-color .25s var(--ease);
+}
+.swatch:active { transform: scale(0.9); }
+.swatch--on { border-color: var(--mocha); }
+.swatch--clay  { background: var(--clay); }
+.swatch--sage  { background: var(--sage); }
+.swatch--dust  { background: var(--dust); }
+.swatch--mocha { background: var(--mocha-soft); }
+
+/* ---------- top tab switcher (train / habits) ---------- */
+.tabs { display: flex; gap: 4px; justify-content: center; margin-top: 14px; }
+.tab {
+  border: none; background: transparent; color: var(--mocha-faint);
+  font-size: 12px; letter-spacing: 0.22em; text-transform: lowercase;
+  padding: 7px 18px; border-radius: 999px; cursor: pointer;
+  transition: background .3s var(--ease), color .3s var(--ease);
+}
+.tab--on { background: var(--surface); color: var(--mocha); }
+
+/* ---------- habit tracker ---------- */
+.habits__bar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 18px 2px 12px;
+}
+.habits__day {
+  font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--mocha-faint);
+}
+.habits {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 12px; padding: 2px;
+}
+.habits__empty {
+  margin: 40px auto; text-align: center;
+  font-size: 13px; letter-spacing: 0.04em; color: var(--mocha-faint);
+}
+.habit {
+  position: relative;
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(70,58,49,0.04), inset 0 0 0 1px rgba(255,255,255,0.25);
+}
+.habit__tap {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: 14px;
+  border: none; background: transparent; cursor: pointer;
+  text-align: left; padding: 0;
+}
+.habit__tap:active { transform: scale(0.99); }
+.habit__ring { position: relative; width: 42px; height: 42px; flex: 0 0 auto; }
+.habit__ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.habit__ringtrack { fill: none; stroke: var(--ring-track); stroke-width: 4; }
+.habit__ringfill {
+  fill: none; stroke: var(--habit-accent, var(--clay)); stroke-width: 4;
+  stroke-linecap: round; transition: stroke-dashoffset .5s var(--ease);
+}
+.habit__check {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  font-size: 17px; color: var(--habit-accent, var(--clay));
+  opacity: 0; transform: scale(0.6); transition: opacity .3s var(--ease), transform .3s var(--ease);
+}
+.habit.is-done .habit__check { opacity: 1; transform: none; }
+.habit__body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.habit__name {
+  font-size: 16px; color: var(--mocha);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.habit.is-done .habit__name { color: var(--mocha-soft); }
+.habit__meta { display: flex; align-items: center; gap: 10px; }
+.habit__count {
+  font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--mocha-soft);
+}
+.habit__streak { font-size: 11.5px; letter-spacing: 0.03em; color: var(--mocha-faint); }
+.habit__trail { display: flex; gap: 4px; }
+.habit__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--oat-deep); }
+.habit__dot.on { background: var(--habit-accent, var(--clay)); }
+.habit__del {
+  display: none;
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: var(--oat-deep); color: var(--mocha-soft);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  flex: 0 0 auto;
+}
+.habit__del:active { transform: scale(0.88); }
+.habits.is-editing .habit__del { display: grid; place-items: center; }
+.habits.is-editing .habit__tap { opacity: 0.55; pointer-events: none; }
+
+.begin--soft {
+  background: var(--surface); color: var(--mocha);
+  box-shadow: 0 1px 2px rgba(70,58,49,0.06);
+  margin-top: 14px;
+}
+.begin--soft:active { background: var(--oat-deep); }
+
 .dials {
   display: grid;
   grid-template-columns: 1fr 1fr;

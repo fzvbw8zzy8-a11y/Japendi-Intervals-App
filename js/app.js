@@ -56,7 +56,7 @@
 
   // ---------- elements ----------
   const $ = sel => document.querySelector(sel);
-  const views = { setup: $('#setup'), timer: $('#timer'), done: $('#done') };
+  const views = { setup: $('#setup'), timer: $('#timer'), done: $('#done'), habits: $('#habits') };
   const timerView = views.timer;
 
   const ringFill = $('#ringFill');
@@ -71,6 +71,11 @@
     presets: $('#presets'), dials: $('#dials'), dialsBreath: $('#dialsBreath'),
     setup: $('#setup'),
     sheet: $('#sheet'), presetName: $('#presetName'),
+    // habit tracker
+    habitList: $('#habitList'), habitDay: $('#habitDay'), habitEdit: $('#habitEdit'),
+    addHabit: $('#addHabit'), habitSheet: $('#habitSheet'),
+    habitNameInput: $('#habitNameInput'), habitTargetVal: $('#habitTargetVal'),
+    habitSwatches: $('#habitSwatches'),
   };
 
   // ============================================================
@@ -587,6 +592,184 @@
   };
 
   // ============================================================
+  //  HABIT TRACKER
+  //  Daily habits with a per-habit target count. Tap completes /
+  //  increments; tapping past the target wraps to 0 (undo).
+  //  Storage mirrors to the native App Group store (for the widget)
+  //  when running inside the Capacitor app.
+  // ============================================================
+  const ACCENT_VAR = { clay: 'var(--clay)', sage: 'var(--sage)', dust: 'var(--dust)', mocha: 'var(--mocha-soft)' };
+
+  let habits = loadHabits();
+  let habitLog = loadHabitLog();
+  let habitEditing = false;
+  let draftAccent = 'clay';
+  let draftTarget = 1;
+
+  function dayKey(d = new Date()) {
+    const z = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  }
+  function keyOffset(off) { const d = new Date(); d.setDate(d.getDate() + off); return dayKey(d); }
+
+  function loadHabits() {
+    try { const r = JSON.parse(localStorage.getItem('aki.habits')); if (Array.isArray(r)) return r; } catch (_) {}
+    return [];
+  }
+  function loadHabitLog() {
+    try { const r = JSON.parse(localStorage.getItem('aki.habitlog')); if (r && typeof r === 'object') return r; } catch (_) {}
+    return {};
+  }
+  function persistHabits() {
+    try {
+      localStorage.setItem('aki.habits', JSON.stringify(habits));
+      localStorage.setItem('aki.habitlog', JSON.stringify(habitLog));
+    } catch (_) {}
+    // mirror to the native App Group store so the widget sees the same data
+    try {
+      const S = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AkiStore;
+      if (S && S.set) S.set({ value: JSON.stringify({ habits, log: habitLog }) });
+    } catch (_) {}
+  }
+
+  function habitCount(id, key = dayKey()) { const day = habitLog[key]; return (day && day[id]) || 0; }
+  function habitDone(h, key = dayKey()) { return habitCount(h.id, key) >= (h.target || 1); }
+
+  function tapHabit(h) {
+    const key = dayKey();
+    if (!habitLog[key]) habitLog[key] = {};
+    const target = h.target || 1;
+    const cur = habitLog[key][h.id] || 0;
+    const next = cur >= target ? 0 : cur + 1;     // wrap to 0 to undo once complete
+    if (next === 0) delete habitLog[key][h.id]; else habitLog[key][h.id] = next;
+    persistHabits();
+    renderHabits();
+    if (next >= target && next !== 0) { tick(660, 0.06); haptic(20); }
+    else { tick(next === 0 ? 380 : 520, 0.04); }
+  }
+
+  function computeStreak(h) {
+    let streak = 0;
+    let off = habitDone(h, keyOffset(0)) ? 0 : -1;   // today not done yet → count from yesterday
+    while (off > -3650 && habitCount(h.id, keyOffset(off)) >= (h.target || 1)) { streak++; off--; }
+    return streak;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+  function streakLabel(s) { return s > 0 ? `${s} day${s === 1 ? '' : 's'}` : 'start today'; }
+  function trailDots(h) {
+    let out = '';
+    for (let off = -6; off <= 0; off++) {
+      const on = habitCount(h.id, keyOffset(off)) >= (h.target || 1);
+      out += `<span class="habit__dot${on ? ' on' : ''}"></span>`;
+    }
+    return out;
+  }
+
+  function renderHabits() {
+    el.habitDay.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+    const list = el.habitList;
+    list.classList.toggle('is-editing', habitEditing);
+    list.innerHTML = '';
+    if (habits.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'habits__empty';
+      empty.textContent = 'no habits yet — add one below';
+      list.appendChild(empty);
+      return;
+    }
+    const R = 18, LEN = 2 * Math.PI * R;
+    habits.forEach(h => {
+      const target = h.target || 1;
+      const count = habitCount(h.id);
+      const off = LEN * (1 - Math.min(1, count / target));
+      const card = document.createElement('div');
+      card.className = 'habit' + (habitDone(h) ? ' is-done' : '');
+      card.style.setProperty('--habit-accent', ACCENT_VAR[h.accent] || ACCENT_VAR.clay);
+
+      const tap = document.createElement('button');
+      tap.className = 'habit__tap';
+      tap.setAttribute('aria-label', 'complete ' + h.name);
+      tap.innerHTML =
+        `<span class="habit__ring">
+          <svg viewBox="0 0 42 42">
+            <circle class="habit__ringtrack" cx="21" cy="21" r="${R}"/>
+            <circle class="habit__ringfill" cx="21" cy="21" r="${R}" style="stroke-dasharray:${LEN};stroke-dashoffset:${off}"/>
+          </svg>
+          <span class="habit__check">✓</span>
+        </span>
+        <span class="habit__body">
+          <span class="habit__name">${escapeHtml(h.name)}</span>
+          <span class="habit__meta">
+            ${target > 1 ? `<span class="habit__count">${count}/${target}</span>` : ''}
+            <span class="habit__streak">${streakLabel(computeStreak(h))}</span>
+            <span class="habit__trail">${trailDots(h)}</span>
+          </span>
+        </span>`;
+      tap.addEventListener('click', () => tapHabit(h));
+      card.appendChild(tap);
+
+      const del = document.createElement('button');
+      del.className = 'habit__del';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'delete ' + h.name);
+      del.addEventListener('click', e => { e.stopPropagation(); deleteHabit(h.id); });
+      card.appendChild(del);
+
+      list.appendChild(card);
+    });
+  }
+
+  function deleteHabit(id) {
+    habits = habits.filter(h => h.id !== id);
+    persistHabits();
+    renderHabits();
+    tick(380, 0.05);
+  }
+
+  // ---------- new-habit sheet ----------
+  function updateSwatches() {
+    el.habitSwatches.querySelectorAll('.swatch').forEach(s =>
+      s.classList.toggle('swatch--on', s.dataset.accent === draftAccent));
+  }
+  function openHabitSheet() {
+    tick(520, 0.04);
+    el.habitNameInput.value = '';
+    draftTarget = 1; draftAccent = 'clay';
+    el.habitTargetVal.textContent = '1';
+    updateSwatches();
+    el.habitSheet.classList.add('sheet--open');
+    el.habitSheet.setAttribute('aria-hidden', 'false');
+    setTimeout(() => el.habitNameInput.focus(), 60);
+  }
+  function closeHabitSheet() {
+    el.habitSheet.classList.remove('sheet--open');
+    el.habitSheet.setAttribute('aria-hidden', 'true');
+    el.habitNameInput.blur();
+  }
+  function commitHabit() {
+    const name = el.habitNameInput.value.trim();
+    if (!name) { el.habitNameInput.focus(); return; }
+    habits.push({
+      id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name, target: draftTarget, accent: draftAccent, created: dayKey(),
+    });
+    persistHabits();
+    closeHabitSheet();
+    renderHabits();
+    tick(660, 0.06);
+  }
+
+  // ---------- tab navigation ----------
+  function switchTab(name) {
+    show(name);
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('tab--on', t.dataset.tab === name));
+    if (name === 'habits') renderHabits();
+  }
+
+  // ============================================================
   //  WIRING
   // ============================================================
   el.begin.addEventListener('click', () => { audio(); startWorkout(); });
@@ -600,6 +783,34 @@
   $('#sheetCancel').addEventListener('click', closeSheet);
   el.sheet.addEventListener('click', e => { if (e.target === el.sheet) closeSheet(); });
   el.presetName.addEventListener('keydown', e => { if (e.key === 'Enter') commitSheet(); });
+
+  // tab navigation (train / habits)
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+  // habit tracker
+  el.addHabit.addEventListener('click', openHabitSheet);
+  el.habitEdit.addEventListener('click', () => {
+    habitEditing = !habitEditing;
+    el.habitEdit.textContent = habitEditing ? 'done' : 'edit';
+    renderHabits();
+  });
+  $('#habitSave').addEventListener('click', commitHabit);
+  $('#habitCancel').addEventListener('click', closeHabitSheet);
+  el.habitSheet.addEventListener('click', e => { if (e.target === el.habitSheet) closeHabitSheet(); });
+  el.habitNameInput.addEventListener('keydown', e => { if (e.key === 'Enter') commitHabit(); });
+  el.habitSwatches.addEventListener('click', e => {
+    const s = e.target.closest('.swatch');
+    if (!s) return;
+    draftAccent = s.dataset.accent;
+    updateSwatches();
+  });
+  el.habitSheet.querySelector('.sheet__stepper').addEventListener('click', e => {
+    const btn = e.target.closest('.step');
+    if (!btn) return;
+    draftTarget = Math.min(20, Math.max(1, draftTarget + (btn.dataset.habitTarget === 'inc' ? 1 : -1)));
+    el.habitTargetVal.textContent = draftTarget;
+    tick(480, 0.03);
+  });
 
   buildPresets();
   renderSetup();
