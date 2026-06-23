@@ -26,6 +26,24 @@ struct HabitsEntry: TimelineEntry {
     let habits: [HabitItem]
     let counts: [String: Int]
     let tasks: [TaskItem]
+    let reorder: Bool
+}
+
+// a pair of up/down move arrows shown in reorder mode
+private struct MoveArrows<UpIntent: AppIntent, DownIntent: AppIntent>: View {
+    let up: UpIntent
+    let down: DownIntent
+    let canUp: Bool
+    let canDown: Bool
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(intent: up) { Image(systemName: "chevron.up").font(.system(size: 13, weight: .semibold)) }
+                .buttonStyle(.plain).disabled(!canUp).opacity(canUp ? 1 : 0.28)
+            Button(intent: down) { Image(systemName: "chevron.down").font(.system(size: 13, weight: .semibold)) }
+                .buttonStyle(.plain).disabled(!canDown).opacity(canDown ? 1 : 0.28)
+        }
+        .foregroundStyle(Color.akiSoft)
+    }
 }
 
 struct HabitsProvider: TimelineProvider {
@@ -41,7 +59,8 @@ struct HabitsProvider: TimelineProvider {
         let hs = HabitStore.habits()
         var counts: [String: Int] = [:]
         for h in hs { counts[h.id] = HabitStore.count(h.id) }
-        return HabitsEntry(date: .now, habits: hs, counts: counts, tasks: HabitStore.tasks())
+        return HabitsEntry(date: .now, habits: hs, counts: counts,
+                           tasks: HabitStore.tasks(), reorder: HabitStore.reorderMode())
     }
 
     private var sample: HabitsEntry {
@@ -51,7 +70,8 @@ struct HabitsProvider: TimelineProvider {
                              HabitItem(id: "c", name: "Read", target: 1, accent: "clay")],
                     counts: ["a": 1, "b": 2, "c": 0],
                     tasks: [TaskItem(id: "t1", text: "Call dentist", kind: "once", done: false),
-                            TaskItem(id: "t2", text: "Tidy desk", kind: "daily", done: true)])
+                            TaskItem(id: "t2", text: "Tidy desk", kind: "daily", done: true)],
+                    reorder: false)
     }
 }
 
@@ -103,55 +123,96 @@ struct HabitCell: View {
 struct HabitRow: View {
     let habit: HabitItem
     let count: Int
+    var reorder: Bool = false
+    var canUp: Bool = false
+    var canDown: Bool = false
+
     var body: some View {
-        let done = count >= habit.target
-        Button(intent: ToggleHabitIntent(habitId: habit.id)) {
+        if reorder {
             HStack(spacing: 13) {
                 HabitRing(color: accentColor(habit.accent), count: count, target: habit.target)
                     .frame(width: 30, height: 30)
-                Text(habit.name)
-                    .font(.system(size: 15))
-                    .foregroundStyle(done ? Color.akiSoft : Color.akiMocha)
-                    .lineLimit(1)
+                Text(habit.name).font(.system(size: 15)).foregroundStyle(Color.akiMocha).lineLimit(1)
                 Spacer(minLength: 6)
-                if done {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 15)).foregroundStyle(accentColor(habit.accent))
-                }
+                MoveArrows(up: MoveHabitIntent(habitId: habit.id, delta: -1),
+                           down: MoveHabitIntent(habitId: habit.id, delta: 1),
+                           canUp: canUp, canDown: canDown)
             }
             .padding(.vertical, 5)
+        } else {
+            let done = count >= habit.target
+            Button(intent: ToggleHabitIntent(habitId: habit.id)) {
+                HStack(spacing: 13) {
+                    HabitRing(color: accentColor(habit.accent), count: count, target: habit.target)
+                        .frame(width: 30, height: 30)
+                    Text(habit.name)
+                        .font(.system(size: 15))
+                        .foregroundStyle(done ? Color.akiSoft : Color.akiMocha)
+                        .lineLimit(1)
+                    Spacer(minLength: 6)
+                    if done {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15)).foregroundStyle(accentColor(habit.accent))
+                    }
+                }
+                .padding(.vertical, 5)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 }
 
 struct TaskRow: View {
     let task: TaskItem
+    var reorder: Bool = false
+    var canUp: Bool = false
+    var canDown: Bool = false
+
+    private var checkbox: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(task.done ? Color.akiSage : Color.akiDust, lineWidth: 2)
+                .frame(width: 22, height: 22)
+            if task.done {
+                RoundedRectangle(cornerRadius: 6).fill(Color.akiSage).frame(width: 22, height: 22)
+                Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.akiOat)
+            }
+        }
+        .frame(width: 30, height: 30)
+    }
+
+    private var label: some View {
+        Text(task.text)
+            .font(.system(size: 15))
+            .strikethrough(task.done)
+            .foregroundStyle(task.done ? Color.akiFaint : Color.akiMocha)
+            .lineLimit(1)
+    }
+
     var body: some View {
-        Button(intent: ToggleTaskIntent(taskId: task.id)) {
+        if reorder {
             HStack(spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(task.done ? Color.akiSage : Color.akiDust, lineWidth: 2)
-                        .frame(width: 22, height: 22)
-                    if task.done {
-                        RoundedRectangle(cornerRadius: 6).fill(Color.akiSage).frame(width: 22, height: 22)
-                        Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Color.akiOat)
-                    }
-                }
-                .frame(width: 30, height: 30)
-                Text(task.text)
-                    .font(.system(size: 15))
-                    .strikethrough(task.done)
-                    .foregroundStyle(task.done ? Color.akiFaint : Color.akiMocha)
-                    .lineLimit(1)
+                checkbox
+                label
                 Spacer(minLength: 6)
-                Text(task.kind.uppercased())
-                    .font(.system(size: 9)).tracking(1).foregroundStyle(Color.akiFaint)
+                MoveArrows(up: MoveTaskIntent(taskId: task.id, delta: -1),
+                           down: MoveTaskIntent(taskId: task.id, delta: 1),
+                           canUp: canUp, canDown: canDown)
             }
             .padding(.vertical, 5)
+        } else {
+            Button(intent: ToggleTaskIntent(taskId: task.id)) {
+                HStack(spacing: 13) {
+                    checkbox
+                    label
+                    Spacer(minLength: 6)
+                    Text(task.kind.uppercased())
+                        .font(.system(size: 9)).tracking(1).foregroundStyle(Color.akiFaint)
+                }
+                .padding(.vertical, 5)
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
     }
 }
 
@@ -210,16 +271,23 @@ struct AkiHabitsEntryView: View {
 
     private var largePanel: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .center) {
                 Text("aki").font(.system(size: 16, weight: .light)).tracking(5).foregroundStyle(Color.akiMocha)
                 Spacer()
-                Text(headerSummary)
+                Text(entry.reorder ? "reorder" : headerSummary)
                     .font(.system(size: 11)).tracking(0.5).foregroundStyle(Color.akiSoft)
+                Button(intent: ToggleReorderIntent()) {
+                    Image(systemName: entry.reorder ? "checkmark" : "arrow.up.arrow.down")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Color.akiSoft)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8)
             }
             .padding(.bottom, 2)
 
             ForEach(Array(panelHabits.enumerated()), id: \.element.id) { idx, h in
-                HabitRow(habit: h, count: entry.counts[h.id] ?? 0)
+                HabitRow(habit: h, count: entry.counts[h.id] ?? 0,
+                         reorder: entry.reorder, canUp: idx > 0, canDown: idx < panelHabits.count - 1)
                 if idx < panelHabits.count - 1 || !panelTasks.isEmpty { divider }
             }
 
@@ -229,7 +297,8 @@ struct AkiHabitsEntryView: View {
                     .foregroundStyle(Color.akiFaint)
                     .padding(.top, 2)
                 ForEach(Array(panelTasks.enumerated()), id: \.element.id) { idx, t in
-                    TaskRow(task: t)
+                    TaskRow(task: t,
+                            reorder: entry.reorder, canUp: idx > 0, canDown: idx < panelTasks.count - 1)
                     if idx < panelTasks.count - 1 { divider }
                 }
             }

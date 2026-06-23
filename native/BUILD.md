@@ -127,6 +127,7 @@ Drag these from `native/ios/AkiWidget/` into the **AkiWidget** target:
 - `HabitStore.swift`
 - `ToggleHabitIntent.swift`
 - `ToggleTaskIntent.swift`
+- `MoveItemIntents.swift`
 - `AkiHabitsWidget.swift`
 
 (`AkiWidgetBundle.swift` already lists both `AkiWidget()` and
@@ -143,6 +144,11 @@ Long-press the Home Screen → **＋** → **Aki** → **Aki — Habits**:
 
 Tap a ring/row to mark today done; count habits fill toward their target, then
 wrap to undo. Changes sync back to the app when you next open it.
+
+**Reorder from the widget:** tap the **↑↓** icon in the panel header to enter
+reorder mode — each row turns into up/down arrows; tap to move items. Tap the
+**✓** to finish. (iOS widgets have no drag gesture, so reordering uses these
+App-Intent arrows.) Order is shared with the app both ways.
 
 ### 5. Make it your Focus Home Screen
 

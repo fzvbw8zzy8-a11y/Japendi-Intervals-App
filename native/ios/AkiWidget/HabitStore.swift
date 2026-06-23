@@ -120,4 +120,37 @@ enum HabitStore {
         }
         write(data)
     }
+
+    // MARK: Reordering
+
+    /// per-widget "reorder mode" — rows become up/down arrows when on
+    static func reorderMode() -> Bool { defaults()?.bool(forKey: "aki.reorder") ?? false }
+    static func setReorderMode(_ on: Bool) { defaults()?.set(on, forKey: "aki.reorder") }
+
+    static func moveHabit(_ id: String, by delta: Int) {
+        var data = root()
+        var arr = data["habits"] as? [[String: Any]] ?? []
+        guard let i = arr.firstIndex(where: { ($0["id"] as? String) == id }) else { return }
+        let j = i + delta
+        guard j >= 0 && j < arr.count else { return }
+        arr.swapAt(i, j)
+        data["habits"] = arr
+        write(data)
+    }
+
+    /// move relative to the *visible* task order (skips cleared one-off tasks)
+    static func moveTask(_ id: String, by delta: Int) {
+        let visible = tasks().map { $0.id }
+        guard let vi = visible.firstIndex(of: id) else { return }
+        let vj = vi + delta
+        guard vj >= 0 && vj < visible.count else { return }
+        let otherId = visible[vj]
+        var data = root()
+        var arr = data["tasks"] as? [[String: Any]] ?? []
+        guard let i = arr.firstIndex(where: { ($0["id"] as? String) == id }),
+              let j = arr.firstIndex(where: { ($0["id"] as? String) == otherId }) else { return }
+        arr.swapAt(i, j)
+        data["tasks"] = arr
+        write(data)
+    }
 }
