@@ -76,6 +76,7 @@
     addHabit: $('#addHabit'), habitSheet: $('#habitSheet'),
     habitNameInput: $('#habitNameInput'), habitTargetVal: $('#habitTargetVal'),
     habitSwatches: $('#habitSwatches'), habitDaysPick: $('#habitDaysPick'),
+    habitSheetLabel: $('#habitSheetLabel'),
     // tasks
     taskList: $('#taskList'), tasksHead: $('#tasksHead'), addTask: $('#addTask'),
     taskSheet: $('#taskSheet'), taskTextInput: $('#taskTextInput'),
@@ -630,6 +631,7 @@
   let draftAccent = 'clay';
   let draftTarget = 1;
   let draftDays = [0, 1, 2, 3, 4, 5, 6];
+  let editingHabitId = null;
   let draftTaskKind = 'once';
 
   const DAY_ABBR = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
@@ -737,10 +739,12 @@
     b.addEventListener('click', e => { e.stopPropagation(); onClick(); });
     return b;
   }
-  // edit-mode cluster: ↑ ↓ ×  for an item at `idx` within a list of `total`
-  function editControls(idx, total, name, onUp, onDown, onDelete) {
+  // edit-mode cluster: [✎] ↑ ↓ ×  for an item at `idx` within a list of `total`.
+  // pass onEdit to include a pencil button (habits only).
+  function editControls(idx, total, name, onUp, onDown, onDelete, onEdit) {
     const wrap = document.createElement('div');
     wrap.className = 'row__ctrls';
+    if (onEdit) wrap.appendChild(ctrlBtn('✎', 'edit ' + name, false, onEdit));
     wrap.appendChild(ctrlBtn('↑', 'move ' + name + ' up', idx === 0, onUp));
     wrap.appendChild(ctrlBtn('↓', 'move ' + name + ' down', idx === total - 1, onDown));
     wrap.appendChild(ctrlBtn('×', 'delete ' + name, false, onDelete, 'ctrlbtn--del'));
@@ -803,7 +807,8 @@
       tap.addEventListener('click', () => tapHabit(h));
       card.appendChild(tap);
       card.appendChild(editControls(idx, visible.length, h.name,
-        () => moveHabit(h.id, -1), () => moveHabit(h.id, 1), () => deleteHabit(h.id)));
+        () => moveHabit(h.id, -1), () => moveHabit(h.id, 1), () => deleteHabit(h.id),
+        () => openHabitSheet(h)));
 
       list.appendChild(card);
     });
@@ -825,12 +830,17 @@
     el.habitDaysPick.querySelectorAll('.day').forEach(d =>
       d.classList.toggle('day--on', draftDays.includes(Number(d.dataset.day))));
   }
-  function openHabitSheet() {
+  // open for a new habit, or pass an existing habit to edit it
+  function openHabitSheet(habit) {
     tick(520, 0.04);
-    el.habitNameInput.value = '';
-    draftTarget = 1; draftAccent = 'clay';
-    draftDays = [0, 1, 2, 3, 4, 5, 6];
-    el.habitTargetVal.textContent = '1';
+    editingHabitId = habit ? habit.id : null;
+    el.habitSheetLabel.textContent = habit ? 'edit habit' : 'new habit';
+    el.habitNameInput.value = habit ? habit.name : '';
+    draftTarget = habit ? (habit.target || 1) : 1;
+    draftAccent = habit ? (habit.accent || 'clay') : 'clay';
+    draftDays = (habit && Array.isArray(habit.days) && habit.days.length)
+      ? habit.days.slice() : [0, 1, 2, 3, 4, 5, 6];
+    el.habitTargetVal.textContent = draftTarget;
     updateSwatches();
     updateDays();
     el.habitSheet.classList.add('sheet--open');
@@ -841,15 +851,22 @@
     el.habitSheet.classList.remove('sheet--open');
     el.habitSheet.setAttribute('aria-hidden', 'true');
     el.habitNameInput.blur();
+    editingHabitId = null;
   }
   function commitHabit() {
     const name = el.habitNameInput.value.trim();
     if (!name) { el.habitNameInput.focus(); return; }
     const days = draftDays.length ? draftDays.slice().sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
-    habits.push({
-      id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name, target: draftTarget, accent: draftAccent, days, created: dayKey(),
-    });
+    if (editingHabitId) {
+      const h = habits.find(x => x.id === editingHabitId);
+      if (h) { h.name = name; h.target = draftTarget; h.accent = draftAccent; h.days = days; }
+    } else {
+      habits.push({
+        id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name, target: draftTarget, accent: draftAccent, days, created: dayKey(),
+      });
+    }
+    editingHabitId = null;
     persistAll();
     closeHabitSheet();
     renderHabits();
@@ -982,7 +999,7 @@
   document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
   // habit tracker
-  el.addHabit.addEventListener('click', openHabitSheet);
+  el.addHabit.addEventListener('click', () => openHabitSheet());
   el.habitEdit.addEventListener('click', () => {
     habitEditing = !habitEditing;
     el.habitEdit.textContent = habitEditing ? 'done' : 'edit';
