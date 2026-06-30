@@ -77,10 +77,10 @@ body {
 /* ============ SETUP ============ */
 .masthead { text-align: center; margin-bottom: 22px; }
 .wordmark {
-  font-size: 40px;
+  font-size: 30px;
   font-weight: 300;
-  letter-spacing: 0.22em;
-  text-indent: 0.22em;
+  letter-spacing: 0.16em;
+  text-indent: 0.16em;
   color: var(--mocha);
 }
 .presets {

@@ -258,7 +258,7 @@ struct AkiHabitsEntryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 6) {
-            Text("aki").font(.system(size: 15, weight: .light)).tracking(5).foregroundStyle(Color.akiMocha)
+            Text("stewardship").font(.system(size: 13, weight: .light)).tracking(2).foregroundStyle(Color.akiMocha)
             Text("add habits in the app").font(.system(size: 10)).foregroundStyle(Color.akiSoft)
         }
     }
@@ -272,7 +272,8 @@ struct AkiHabitsEntryView: View {
     private var largePanel: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center) {
-                Text("aki").font(.system(size: 16, weight: .light)).tracking(5).foregroundStyle(Color.akiMocha)
+                Text("stewardship").font(.system(size: 13, weight: .light)).tracking(2)
+                    .foregroundStyle(Color.akiMocha).lineLimit(1).minimumScaleFactor(0.7)
                 Spacer()
                 Text(entry.reorder ? "reorder" : headerSummary)
                     .font(.system(size: 11)).tracking(0.5).foregroundStyle(Color.akiSoft)
@@ -320,7 +321,7 @@ struct AkiHabitsWidget: Widget {
         StaticConfiguration(kind: kind, provider: HabitsProvider()) { entry in
             AkiHabitsEntryView(entry: entry)
         }
-        .configurationDisplayName("Aki — Habits")
+        .configurationDisplayName("Stewardship — Habits")
         .description("Tap a habit to mark it done today.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }

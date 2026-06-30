@@ -1,7 +1,7 @@
 {
-  "name": "Aki · Intervals",
-  "short_name": "Aki",
-  "description": "A calm, Japandi-inspired sprint & interval training timer.",
+  "name": "Stewardship",
+  "short_name": "Stewardship",
+  "description": "A calm, Japandi-inspired tracker for training, breathing, habits & tasks.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

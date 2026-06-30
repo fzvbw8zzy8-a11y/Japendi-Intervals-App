@@ -164,13 +164,13 @@ struct AkiWidgetEntryView: View {
             }
 
         case .accessoryInline:
-            Label("Aki · \(entry.preset.title)", systemImage: "circle.dashed")
+            Label("Stewardship · \(entry.preset.title)", systemImage: "circle.dashed")
 
         case .accessoryRectangular:
             HStack(spacing: 9) {
                 RingGlyph(color: .primary, line: 2.5).frame(width: 26, height: 26)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("aki").font(.system(size: 12, weight: .semibold)).tracking(2)
+                    Text("stewardship").font(.system(size: 11, weight: .semibold)).tracking(1).lineLimit(1).minimumScaleFactor(0.7)
                     Text(entry.preset.title).font(.system(size: 13)).lineLimit(1)
                     Text("tap to begin").font(.system(size: 10)).foregroundStyle(.secondary)
                 }
@@ -179,9 +179,10 @@ struct AkiWidgetEntryView: View {
 
         default: // .systemSmall — Home Screen, full colour
             VStack(spacing: 8) {
-                Text("aki")
-                    .font(.system(size: 18, weight: .light)).tracking(6)
+                Text("stewardship")
+                    .font(.system(size: 13, weight: .light)).tracking(1)
                     .foregroundStyle(Color.akiMocha)
+                    .lineLimit(1).minimumScaleFactor(0.7)
                 RingGlyph(color: .akiClay, line: 4)
                     .frame(width: 46, height: 46)
                 Text(entry.preset.title)
@@ -203,7 +204,7 @@ struct AkiWidget: Widget {
         AppIntentConfiguration(kind: kind, intent: SelectPresetIntent.self, provider: Provider()) { entry in
             AkiWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Aki — Begin Workout")
+        .configurationDisplayName("Stewardship — Begin Workout")
         .description("One tap to start a chosen workout.")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline, .systemSmall])
     }

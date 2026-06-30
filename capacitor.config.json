@@ -1,9 +1,9 @@
 {
   "appId": "app.aki.intervals",
-  "appName": "Aki",
+  "appName": "Stewardship",
   "webDir": "www",
   "ios": {
-    "scheme": "Aki",
+    "scheme": "Stewardship",
     "contentInset": "always",
     "backgroundColor": "#e7ddd0"
   }
