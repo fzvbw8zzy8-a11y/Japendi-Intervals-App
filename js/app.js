@@ -75,7 +75,7 @@
     habitList: $('#habitList'), habitDay: $('#habitDay'), habitEdit: $('#habitEdit'),
     addHabit: $('#addHabit'), habitSheet: $('#habitSheet'),
     habitNameInput: $('#habitNameInput'), habitTargetVal: $('#habitTargetVal'),
-    habitSwatches: $('#habitSwatches'),
+    habitSwatches: $('#habitSwatches'), habitDaysPick: $('#habitDaysPick'),
     // tasks
     taskList: $('#taskList'), tasksHead: $('#tasksHead'), addTask: $('#addTask'),
     taskSheet: $('#taskSheet'), taskTextInput: $('#taskTextInput'),
@@ -629,7 +629,24 @@
   let habitEditing = false;
   let draftAccent = 'clay';
   let draftTarget = 1;
+  let draftDays = [0, 1, 2, 3, 4, 5, 6];
   let draftTaskKind = 'once';
+
+  const DAY_ABBR = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+  // null = every day; otherwise the specific weekday numbers (0=Sun)
+  function habitDaysActive(h) {
+    return (!h.days || h.days.length === 0 || h.days.length >= 7) ? null : h.days;
+  }
+  function habitScheduledOn(h, date) {
+    const d = habitDaysActive(h);
+    return !d || d.includes(date.getDay());
+  }
+  function habitScheduledToday(h) { return habitScheduledOn(h, new Date()); }
+  function daysLabel(h) {
+    const d = habitDaysActive(h);
+    if (!d) return '';
+    return d.slice().sort((a, b) => a - b).map(i => DAY_ABBR[i]).join('·');
+  }
 
   function dayKey(d = new Date()) {
     const z = n => String(n).padStart(2, '0');
@@ -683,10 +700,17 @@
     else { tick(next === 0 ? 380 : 520, 0.04); }
   }
 
+  // streak counts consecutive *scheduled* days completed; unscheduled days are
+  // skipped (they neither extend nor break the streak)
   function computeStreak(h) {
     let streak = 0;
-    let off = habitDone(h, keyOffset(0)) ? 0 : -1;   // today not done yet → count from yesterday
-    while (off > -3650 && habitCount(h.id, keyOffset(off)) >= (h.target || 1)) { streak++; off--; }
+    let off = (habitScheduledToday(h) && !habitDone(h, keyOffset(0))) ? -1 : 0;
+    for (let i = 0; i < 3650; i++, off--) {
+      const date = new Date(); date.setDate(date.getDate() + off);
+      if (!habitScheduledOn(h, date)) continue;          // skip days it isn't due
+      if (habitCount(h.id, dayKey(date)) >= (h.target || 1)) streak++;
+      else break;
+    }
     return streak;
   }
 
@@ -738,15 +762,18 @@
     const list = el.habitList;
     list.classList.toggle('is-editing', habitEditing);
     list.innerHTML = '';
-    if (habits.length === 0) {
+    // normal view shows only today's scheduled habits; edit mode shows all so
+    // you can manage habits scheduled for other days
+    const visible = habitEditing ? habits : habits.filter(habitScheduledToday);
+    if (visible.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'habits__empty';
-      empty.textContent = 'no habits yet — add one below';
+      empty.textContent = habits.length === 0 ? 'no habits yet — add one below' : 'nothing scheduled today';
       list.appendChild(empty);
       return;
     }
     const R = 18, LEN = 2 * Math.PI * R;
-    habits.forEach((h, idx) => {
+    visible.forEach((h, idx) => {
       const target = h.target || 1;
       const count = habitCount(h.id);
       const off = LEN * (1 - Math.min(1, count / target));
@@ -770,12 +797,12 @@
           <span class="habit__meta">
             ${target > 1 ? `<span class="habit__count">${count}/${target}</span>` : ''}
             <span class="habit__streak">${streakLabel(computeStreak(h))}</span>
-            <span class="habit__trail">${trailDots(h)}</span>
+            ${daysLabel(h) ? `<span class="habit__days">${daysLabel(h)}</span>` : `<span class="habit__trail">${trailDots(h)}</span>`}
           </span>
         </span>`;
       tap.addEventListener('click', () => tapHabit(h));
       card.appendChild(tap);
-      card.appendChild(editControls(idx, habits.length, h.name,
+      card.appendChild(editControls(idx, visible.length, h.name,
         () => moveHabit(h.id, -1), () => moveHabit(h.id, 1), () => deleteHabit(h.id)));
 
       list.appendChild(card);
@@ -794,12 +821,18 @@
     el.habitSwatches.querySelectorAll('.swatch').forEach(s =>
       s.classList.toggle('swatch--on', s.dataset.accent === draftAccent));
   }
+  function updateDays() {
+    el.habitDaysPick.querySelectorAll('.day').forEach(d =>
+      d.classList.toggle('day--on', draftDays.includes(Number(d.dataset.day))));
+  }
   function openHabitSheet() {
     tick(520, 0.04);
     el.habitNameInput.value = '';
     draftTarget = 1; draftAccent = 'clay';
+    draftDays = [0, 1, 2, 3, 4, 5, 6];
     el.habitTargetVal.textContent = '1';
     updateSwatches();
+    updateDays();
     el.habitSheet.classList.add('sheet--open');
     el.habitSheet.setAttribute('aria-hidden', 'false');
     setTimeout(() => el.habitNameInput.focus(), 60);
@@ -812,9 +845,10 @@
   function commitHabit() {
     const name = el.habitNameInput.value.trim();
     if (!name) { el.habitNameInput.focus(); return; }
+    const days = draftDays.length ? draftDays.slice().sort((a, b) => a - b) : [0, 1, 2, 3, 4, 5, 6];
     habits.push({
       id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name, target: draftTarget, accent: draftAccent, created: dayKey(),
+      name, target: draftTarget, accent: draftAccent, days, created: dayKey(),
     });
     persistAll();
     closeHabitSheet();
@@ -963,6 +997,15 @@
     if (!s) return;
     draftAccent = s.dataset.accent;
     updateSwatches();
+  });
+  el.habitDaysPick.addEventListener('click', e => {
+    const d = e.target.closest('.day');
+    if (!d) return;
+    const day = Number(d.dataset.day);
+    const i = draftDays.indexOf(day);
+    if (i >= 0) draftDays.splice(i, 1); else draftDays.push(day);
+    updateDays();
+    tick(480, 0.03);
   });
   el.habitSheet.querySelector('.sheet__stepper').addEventListener('click', e => {
     const btn = e.target.closest('.step');

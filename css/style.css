@@ -271,7 +271,8 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .habit.is-done .habit__name { color: var(--mocha-soft); }
-.habit__meta { display: flex; align-items: center; gap: 10px; }
+.habit__meta { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+.habit__days { white-space: nowrap; }
 .habit__count {
   font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--mocha-soft);
 }
@@ -354,6 +355,22 @@ body {
 }
 .seg__opt--on { background: var(--paper); color: var(--mocha); box-shadow: 0 1px 2px rgba(70,58,49,0.06); }
 .sheet__hint { font-size: 11.5px; letter-spacing: 0.02em; color: var(--mocha-faint); text-align: center; }
+
+/* day-of-week picker */
+.days { display: flex; gap: 8px; justify-content: space-between; }
+.day {
+  flex: 1; aspect-ratio: 1; max-width: 42px;
+  border: none; border-radius: 50%;
+  background: var(--surface); color: var(--mocha-faint);
+  font-size: 13px; cursor: pointer;
+  transition: background .2s var(--ease), color .2s var(--ease);
+}
+.day--on { background: var(--mocha); color: var(--paper); }
+.day:active { transform: scale(0.9); }
+/* day badge shown on a habit card when it isn't every-day */
+.habit__days {
+  font-size: 10.5px; letter-spacing: 0.08em; color: var(--mocha-faint);
+}
 
 .dials {
   display: grid;

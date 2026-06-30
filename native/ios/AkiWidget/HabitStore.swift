@@ -50,10 +50,19 @@ enum HabitStore {
         defaults()?.set(s, forKey: storeKey)
     }
 
+    /// true if this habit is scheduled for today (missing/empty/all-7 = every day)
+    private static func scheduledToday(_ h: [String: Any]) -> Bool {
+        guard let days = h["days"] as? [Int], !days.isEmpty, days.count < 7 else { return true }
+        let weekday = Calendar.current.component(.weekday, from: Date()) - 1   // 1..7 → 0..6 (Sun=0)
+        return days.contains(weekday)
+    }
+
+    /// only today's scheduled habits (matches the app's day-of-week filtering)
     static func habits() -> [HabitItem] {
         let arr = root()["habits"] as? [[String: Any]] ?? []
         return arr.compactMap { h in
             guard let id = h["id"] as? String, let name = h["name"] as? String else { return nil }
+            guard scheduledToday(h) else { return nil }
             let target = (h["target"] as? Int) ?? 1
             let accent = (h["accent"] as? String) ?? "clay"
             return HabitItem(id: id, name: name, target: max(1, target), accent: accent)
@@ -127,12 +136,17 @@ enum HabitStore {
     static func reorderMode() -> Bool { defaults()?.bool(forKey: "aki.reorder") ?? false }
     static func setReorderMode(_ on: Bool) { defaults()?.set(on, forKey: "aki.reorder") }
 
+    /// move relative to the *visible* (today's) habit order
     static func moveHabit(_ id: String, by delta: Int) {
+        let visible = habits().map { $0.id }
+        guard let vi = visible.firstIndex(of: id) else { return }
+        let vj = vi + delta
+        guard vj >= 0 && vj < visible.count else { return }
+        let otherId = visible[vj]
         var data = root()
         var arr = data["habits"] as? [[String: Any]] ?? []
-        guard let i = arr.firstIndex(where: { ($0["id"] as? String) == id }) else { return }
-        let j = i + delta
-        guard j >= 0 && j < arr.count else { return }
+        guard let i = arr.firstIndex(where: { ($0["id"] as? String) == id }),
+              let j = arr.firstIndex(where: { ($0["id"] as? String) == otherId }) else { return }
         arr.swapAt(i, j)
         data["habits"] = arr
         write(data)
